@@ -1,6 +1,6 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.3.0
+> **版本：** v0.4.0
 > **最後更新：** 2026-04-06
 > **計畫週期：** 2026年4月 ─ 9月
 
@@ -86,31 +86,37 @@ apps/
 │   ├── app.module.ts
 │   ├── tasks/
 │   │   ├── tasks.module.ts
-│   │   ├── tasks.controller.ts
-│   │   ├── tasks.service.ts
-│   │   ├── dto/create-task.dto.ts
+│   │   ├── tasks.controller.ts        # POST /tasks, GET /tasks/:id, DLQ
+│   │   ├── tasks.service.ts           # 動態 per-user 佇列
+│   │   ├── dto/create-task.dto.ts     # userId, priority, model, payload
 │   │   ├── guards/backpressure.guard.ts
 │   │   └── interceptors/idempotency.interceptor.ts
 │   └── metrics/
-│       ├── metrics.controller.ts
+│       ├── metrics.controller.ts      # GET /metrics
 │       └── metrics.module.ts
 └── worker/src/                        # BullMQ Worker (3 files)
-    ├── main.ts
+    ├── main.ts                        # + metrics :9091
     ├── worker.module.ts
-    └── task.processor.ts
+    └── fair-scheduler.service.ts      # 公平調度 + 真實 LLM 呼叫
 
 libs/
 ├── queue/src/                         # 佇列抽象 (3 files)
-│   ├── task.interface.ts
-│   ├── queue.module.ts
+│   ├── task.interface.ts              # Task, TaskStatus, TaskPriority, TokenUsage
+│   ├── queue.module.ts                # Redis 連線 + DLQ
 │   └── index.ts
 ├── idempotency/src/                   # 冪等性 (3 files)
 │   ├── idempotency.service.ts
 │   ├── idempotency.module.ts
 │   └── index.ts
-└── observability/src/                 # 可觀測性 (3 files)
-    ├── metrics.service.ts
-    ├── observability.module.ts
+├── observability/src/                 # 可觀測性 (3 files)
+│   ├── metrics.service.ts             # 9 metrics (duration, completed, failed, dlq, timeout, cost, tokens, queue depth)
+│   ├── observability.module.ts
+│   └── index.ts
+└── cost-governor/src/                 # AI 成本控管 (5 files)
+    ├── model-registry.ts              # 5 模型定義 (Haiku, Sonnet, GPT-4o-mini, GPT-4o, Llama3.2)
+    ├── llm.service.ts                 # Anthropic + OpenAI + Ollama 統一介面
+    ├── cost-tracker.service.ts        # Token/Cost 計算
+    ├── cost-governor.module.ts
     └── index.ts
 
 docker/
@@ -129,11 +135,12 @@ docker/
 
 | Method | Path | 說明 | 加入版本 |
 |---|---|---|---|
-| `POST` | `/tasks` | 建立任務（背壓 + 冪等） | 4月 W1 |
-| `GET` | `/tasks/:id` | 查詢任務狀態 | 4月 W2 |
+| `POST` | `/tasks` | 建立任務（userId + model + priority + 背壓 + 冪等） | 4月 W1 |
+| `GET` | `/tasks/:id?userId=` | 查詢任務狀態（需帶 userId） | 4月 W2 |
 | `GET` | `/tasks/dlq` | 列出死信佇列 | 5月 W2 |
 | `POST` | `/tasks/dlq/:id/retry` | 恢復 DLQ 任務 | 5月 W2 |
-| `GET` | `/metrics` | Prometheus 指標 | 5月 W3 |
+| `GET` | `/metrics` | Prometheus 指標（API） | 5月 W3 |
+| `GET` | `:9091/` | Prometheus 指標（Worker） | 5月 W3 |
 
 ---
 
@@ -180,13 +187,16 @@ docker/
 
 ## 七、Prometheus Metrics
 
-| Metric | Type | 來源 | 說明 |
-|---|---|---|---|
-| `task_processing_duration_seconds` | Histogram | Worker :9091 | Job 處理耗時 |
-| `task_completed_total` | Counter | Worker :9091 | 完成任務數 |
-| `task_failed_total` | Counter | Worker :9091 | 失敗次數 |
-| `task_dlq_total` | Counter | Worker :9091 | 進入 DLQ 數 |
-| `task_queue_depth` | Gauge | API :3000 | 佇列深度 (waiting/active/dlq) |
+| Metric | Type | 來源 | 說明 | 加入版本 |
+|---|---|---|---|---|
+| `task_processing_duration_seconds` | Histogram | Worker :9091 | Job 處理耗時 | 5月 W3 |
+| `task_completed_total` | Counter | Worker :9091 | 完成任務數 | 5月 W3 |
+| `task_failed_total` | Counter | Worker :9091 | 失敗次數 | 5月 W3 |
+| `task_dlq_total` | Counter | Worker :9091 | 進入 DLQ 數 | 5月 W3 |
+| `task_timeout_total` | Counter | Worker :9091 | SLA 超時次數 | 6月 W3 |
+| `task_cost_usd_total` | Counter | Worker :9091 | 累計成本 (USD) | 7月 W1 |
+| `task_tokens_total{direction}` | Counter | Worker :9091 | Token 消耗 (input/output) | 7月 W1 |
+| `task_queue_depth{state}` | Gauge | API :3000 | 佇列深度 (waiting/active/dlq) | 5月 W3 |
 
 ---
 
@@ -212,6 +222,9 @@ docker/
 | BullMQ | ^5.73 | Task queue engine |
 | ioredis | ^5.10 | Redis client |
 | prom-client | ^15.1 | Prometheus metrics |
+| @anthropic-ai/sdk | latest | Anthropic Claude API |
+| openai | latest | OpenAI GPT API |
+| Ollama | v0.20 | 本地 LLM runtime (Llama 3.2) |
 | Redis | 7.2 (Alpine) | Queue storage |
 | Prometheus | v2.53 | Metrics collection |
 | Grafana | 11.1 | Dashboard visualization |
@@ -219,4 +232,4 @@ docker/
 
 ---
 
-*最後更新：2026-04-06 | 版本：v0.3.0*
+*最後更新：2026-04-06 | 版本：v0.4.0*

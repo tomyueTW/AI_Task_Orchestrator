@@ -123,7 +123,12 @@ Failed tasks are automatically retried up to 3 times with exponential backoff (1
 
 The system calls real LLM APIs (Anthropic Claude, OpenAI GPT). Set `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY` in `.env`. Specify a model per task via the optional `model` field. Token usage and cost are tracked via Prometheus metrics (`task_cost_usd_total`, `task_tokens_total`).
 
-Available models: `claude-haiku-4-5-20251001`, `claude-sonnet-4-6-20250514`, `gpt-4o-mini`, `gpt-4o`
+Available models:
+- **Ollama (Local):** `llama3.2` — free, requires [Ollama](https://ollama.com) running locally
+- **Anthropic:** `claude-haiku-4-5-20251001`, `claude-sonnet-4-6-20250514`
+- **OpenAI:** `gpt-4o-mini`, `gpt-4o`
+
+Default model is `llama3.2` (local, free). Set `OLLAMA_HOST` if Ollama runs on a different host.
 
 ### SLA Timeout
 

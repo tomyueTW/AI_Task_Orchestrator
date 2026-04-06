@@ -156,6 +156,7 @@ docker/
 | SLA 超時 | TASK_TIMEOUT_MS 硬性超時 + task_timeout_total metric | 6月 W3 |
 | 真實 LLM 呼叫 | Anthropic SDK + OpenAI SDK 統一介面 | 7月 W1 |
 | 成本追蹤 | ModelRegistry 計費表 + CostTracker + task_cost_usd_total metric | 7月 W1 |
+| 本地 LLM | Ollama + Llama 3.2 (免費本地推理, OpenAI 相容 API) | 7月 W1 |
 
 ---
 
@@ -173,6 +174,7 @@ docker/
 | `TASK_TIMEOUT_MS` | `30000` | Job 執行硬性超時 | 6月 W3 |
 | `ANTHROPIC_API_KEY` | — | Anthropic API Key | 7月 W1 |
 | `OPENAI_API_KEY` | — | OpenAI API Key | 7月 W1 |
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama 本地 API | 7月 W1 |
 
 ---
 

@@ -1,6 +1,6 @@
 export interface ModelDefinition {
   id: string;
-  provider: 'anthropic' | 'openai';
+  provider: 'anthropic' | 'openai' | 'ollama';
   displayName: string;
   inputPricePerMToken: number;
   outputPricePerMToken: number;
@@ -45,6 +45,15 @@ const MODELS: ModelDefinition[] = [
     maxOutputTokens: 16384,
     tags: ['balanced', 'code', 'complex'],
   },
+  {
+    id: 'llama3.2',
+    provider: 'ollama',
+    displayName: 'Llama 3.2 (Local)',
+    inputPricePerMToken: 0,
+    outputPricePerMToken: 0,
+    maxOutputTokens: 2048,
+    tags: ['local', 'free', 'simple'],
+  },
 ];
 
 export class ModelRegistry {
@@ -69,6 +78,6 @@ export class ModelRegistry {
   }
 
   getDefaultModel(): ModelDefinition {
-    return this.models.get('claude-haiku-4-5-20251001')!;
+    return this.models.get('llama3.2')!;
   }
 }

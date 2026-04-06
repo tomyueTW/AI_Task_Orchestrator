@@ -119,6 +119,10 @@ Tasks support four priority levels: `critical` > `high` > `normal` (default) > `
 
 Failed tasks are automatically retried up to 3 times with exponential backoff (1s, 2s, 4s). Tasks that exhaust all retries are moved to a Dead Letter Queue for manual inspection and recovery.
 
+### SLA Timeout
+
+Jobs that exceed `TASK_TIMEOUT_MS` (default 30s) are automatically terminated and retried. Timeout violations are tracked via `task_timeout_total` Prometheus metric.
+
 ### Backpressure
 
 When `waiting + active` jobs exceed the threshold (`WORKER_CONCURRENCY × 100` by default), `POST /tasks` returns `429 Too Many Requests`. The system recovers automatically once workers drain the queue below the threshold.

@@ -14,6 +14,7 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly redis: Redis;
   private readonly perUserConcurrency: number;
   private readonly failureRate: number;
+  private readonly timeoutMs: number;
   private scanInterval: ReturnType<typeof setInterval> | undefined;
 
   constructor(
@@ -28,6 +29,7 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
       10,
     );
     this.failureRate = parseFloat(config.get('TASK_FAILURE_RATE', '0'));
+    this.timeoutMs = parseInt(config.get('TASK_TIMEOUT_MS', '30000'), 10);
   }
 
   async onModuleInit() {
@@ -87,6 +89,11 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
       if (!job) return;
       this.metrics.taskFailed.inc();
 
+      if (error.message.includes('timed out')) {
+        this.metrics.taskTimeout.inc();
+        this.logger.warn(`[${queueName}] Job ${job.id} timed out`);
+      }
+
       const maxAttempts = job.opts.attempts ?? 1;
       if (job.attemptsMade >= maxAttempts) {
         this.logger.error(
@@ -126,9 +133,19 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
 
     const { payload } = job.data;
 
+    // Hard timeout wrapper
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(
+        () => reject(new Error(`Job ${job.id} timed out after ${this.timeoutMs}ms`)),
+        this.timeoutMs,
+      );
+    });
+
     // Simulate AI task processing (1-3s)
     const duration = 1000 + Math.random() * 2000;
-    await new Promise((resolve) => setTimeout(resolve, duration));
+    const workPromise = new Promise<void>((resolve) => setTimeout(resolve, duration));
+
+    await Promise.race([workPromise, timeoutPromise]);
 
     const durationSec = (Date.now() - start) / 1000;
     this.metrics.taskDuration.observe({ status: 'completed' }, durationSec);

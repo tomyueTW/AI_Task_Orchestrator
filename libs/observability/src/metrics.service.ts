@@ -15,6 +15,7 @@ export class MetricsService {
   readonly taskCompleted: Counter;
   readonly taskFailed: Counter;
   readonly taskDlq: Counter;
+  readonly taskTimeout: Counter;
   readonly queueDepth: Gauge;
 
   constructor() {
@@ -44,6 +45,12 @@ export class MetricsService {
     this.taskDlq = new Counter({
       name: 'task_dlq_total',
       help: 'Total number of tasks moved to DLQ',
+      registers: [this.registry],
+    });
+
+    this.taskTimeout = new Counter({
+      name: 'task_timeout_total',
+      help: 'Total number of task timeouts (SLA violations)',
       registers: [this.registry],
     });
 

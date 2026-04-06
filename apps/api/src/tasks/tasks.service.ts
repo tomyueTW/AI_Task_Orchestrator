@@ -1,5 +1,6 @@
 import { Inject, Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
+import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -22,16 +23,15 @@ const STATE_MAP: Record<string, TaskStatus> = {
   failed: TaskStatus.FAILED,
 };
 
-const DEFAULT_JOB_OPTIONS = {
-  attempts: 3,
-  backoff: { type: 'exponential' as const, delay: 1000 },
-  removeOnComplete: { count: 1000 },
-  removeOnFail: { count: 5000 },
-};
-
 @Injectable()
 export class TasksService implements OnModuleDestroy {
   private readonly userQueues = new Map<string, Queue>();
+  private readonly defaultJobOptions = {
+    attempts: 3,
+    backoff: { type: 'exponential' as const, delay: 1000 },
+    removeOnComplete: { count: 1000 },
+    removeOnFail: { count: 5000 },
+  };
 
   constructor(
     @Inject(REDIS_CONNECTION) private readonly redisConfig: RedisConnectionConfig,
@@ -44,7 +44,7 @@ export class TasksService implements OnModuleDestroy {
 
     const queue = new Queue(getUserQueueName(userId), {
       connection: this.redisConfig,
-      defaultJobOptions: DEFAULT_JOB_OPTIONS,
+      defaultJobOptions: this.defaultJobOptions,
     });
     this.userQueues.set(userId, queue);
     return queue;

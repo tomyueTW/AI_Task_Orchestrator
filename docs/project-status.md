@@ -45,7 +45,7 @@
 |---|---|---|---|
 | W1 | 一用戶一隊列 (Fair Scheduling) | ✅ | userId 欄位、per-user 動態佇列 `tasks-user-{userId}`、FairScheduler round-robin worker |
 | W2 | 權重優先級 (Priority) | ✅ | TaskPriority enum (critical/high/normal/low)、BullMQ 內建 priority 搶佔 |
-| W3 | SLA 與超時管理 | ⏳ | |
+| W3 | SLA 與超時管理 | ✅ | TASK_TIMEOUT_MS 硬性超時、Promise.race timeout wrapper、task_timeout_total metric |
 | W4 | 影片 #1 + 總結 | ⏳ | |
 
 ### 7月：AI Routing & Cost（待開始）
@@ -153,6 +153,7 @@ docker/
 | 可觀測性 | Prometheus metrics + Grafana dashboard | 5月 W3 |
 | 公平調度 | Per-user queues + FairScheduler round-robin | 6月 W1 |
 | 優先級搶佔 | TaskPriority (critical/high/normal/low) → BullMQ priority | 6月 W2 |
+| SLA 超時 | TASK_TIMEOUT_MS 硬性超時 + task_timeout_total metric | 6月 W3 |
 
 ---
 
@@ -167,6 +168,7 @@ docker/
 | `IDEMPOTENCY_TTL_SECONDS` | `86400` | 冪等 key TTL | 5月 W1 |
 | `TASK_FAILURE_RATE` | `0` | 失敗模擬（測試用） | 5月 W2 |
 | `MAX_CONCURRENCY_PER_USER` | `1` | 每用戶最大並行數 | 6月 W1 |
+| `TASK_TIMEOUT_MS` | `30000` | Job 執行硬性超時 | 6月 W3 |
 
 ---
 

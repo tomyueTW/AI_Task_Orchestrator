@@ -13,7 +13,7 @@
 | **一：系統穩定與健壯期** | 4月 | 單機穩定系統 (Core Engine) | ✅ 完成 |
 | | 5月 | 可靠性與錯誤處理 (Engineering Depth) | ✅ 完成 |
 | **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | ✅ 完成 |
-| | 7月 | AI Routing & Cost (Intelligence) | ⏳ 待開始 |
+| | 7月 | AI Routing & Cost (Intelligence) | 🔄 進行中 |
 | **三：複雜場景與品牌包裝** | 8月 | 工作流與 Chaos (Resilience) | ⏳ 待開始 |
 | | 9月 | 品牌化與結案 (Portfolio Assets) | ⏳ 待開始 |
 
@@ -52,7 +52,7 @@
 
 | 週 | 主題 | 狀態 | 計畫內容 |
 |---|---|---|---|
-| W1 | Cost Model 與模型庫 | ⏳ | `libs/cost-governor`、ModelRegistry（Anthropic Claude + OpenAI GPT）、真實 API 呼叫、Token 消耗記錄 |
+| W1 | Cost Model 與模型庫 | ✅ | `libs/cost-governor`（ModelRegistry + LlmService + CostTracker）、Anthropic SDK + OpenAI SDK、真實 API 呼叫、cost/token Prometheus metrics |
 | W2 | 智慧路由 (Decision Engine) | ⏳ | `libs/router`、taskType 標籤路由（simple→Haiku, code→Sonnet, complex→Opus）、ADR-005 |
 | W3 | Token Bucket 限流 | ⏳ | Redis Token Bucket per-provider、RPM/TPM 限流、限流觸發延遲 re-queue |
 | W4 | 文章 #3 + 總結 | ⏳ | 《探討 AI 基礎設施成本控制》 |
@@ -154,6 +154,8 @@ docker/
 | 公平調度 | Per-user queues + FairScheduler round-robin | 6月 W1 |
 | 優先級搶佔 | TaskPriority (critical/high/normal/low) → BullMQ priority | 6月 W2 |
 | SLA 超時 | TASK_TIMEOUT_MS 硬性超時 + task_timeout_total metric | 6月 W3 |
+| 真實 LLM 呼叫 | Anthropic SDK + OpenAI SDK 統一介面 | 7月 W1 |
+| 成本追蹤 | ModelRegistry 計費表 + CostTracker + task_cost_usd_total metric | 7月 W1 |
 
 ---
 
@@ -169,6 +171,8 @@ docker/
 | `TASK_FAILURE_RATE` | `0` | 失敗模擬（測試用） | 5月 W2 |
 | `MAX_CONCURRENCY_PER_USER` | `1` | 每用戶最大並行數 | 6月 W1 |
 | `TASK_TIMEOUT_MS` | `30000` | Job 執行硬性超時 | 6月 W3 |
+| `ANTHROPIC_API_KEY` | — | Anthropic API Key | 7月 W1 |
+| `OPENAI_API_KEY` | — | OpenAI API Key | 7月 W1 |
 
 ---
 

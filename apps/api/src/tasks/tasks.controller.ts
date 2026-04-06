@@ -15,7 +15,7 @@ export class TasksController {
   @UseInterceptors(IdempotencyInterceptor)
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async create(@Body() dto: CreateTaskDto): Promise<Task> {
-    return this.tasksService.create(dto.userId, dto.payload, dto.priority);
+    return this.tasksService.create(dto.userId, dto.payload, dto.priority, dto.model);
   }
 
   @Get('dlq')

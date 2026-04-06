@@ -19,11 +19,19 @@ export const PRIORITY_MAP: Record<TaskPriority, number> = {
   [TaskPriority.LOW]: 4,
 };
 
+export interface TokenUsage {
+  input: number;
+  output: number;
+}
+
 export interface Task {
   id: string;
   userId: string;
   priority: TaskPriority;
   status: TaskStatus;
+  model?: string;
+  tokenUsage?: TokenUsage;
+  cost?: number;
   payload: Record<string, unknown>;
   createdAt: string;
 }

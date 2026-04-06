@@ -21,7 +21,9 @@
       "@app/idempotency": ["libs/idempotency/src"],
       "@app/idempotency/*": ["libs/idempotency/src/*"],
       "@app/observability": ["libs/observability/src"],
-      "@app/observability/*": ["libs/observability/src/*"]
+      "@app/observability/*": ["libs/observability/src/*"],
+      "@app/cost-governor": ["libs/cost-governor/src"],
+      "@app/cost-governor/*": ["libs/cost-governor/src/*"]
     }
   }
 }

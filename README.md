@@ -119,6 +119,12 @@ Tasks support four priority levels: `critical` > `high` > `normal` (default) > `
 
 Failed tasks are automatically retried up to 3 times with exponential backoff (1s, 2s, 4s). Tasks that exhaust all retries are moved to a Dead Letter Queue for manual inspection and recovery.
 
+### LLM Integration & Cost Tracking
+
+The system calls real LLM APIs (Anthropic Claude, OpenAI GPT). Set `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY` in `.env`. Specify a model per task via the optional `model` field. Token usage and cost are tracked via Prometheus metrics (`task_cost_usd_total`, `task_tokens_total`).
+
+Available models: `claude-haiku-4-5-20251001`, `claude-sonnet-4-6-20250514`, `gpt-4o-mini`, `gpt-4o`
+
 ### SLA Timeout
 
 Jobs that exceed `TASK_TIMEOUT_MS` (default 30s) are automatically terminated and retried. Timeout violations are tracked via `task_timeout_total` Prometheus metric.

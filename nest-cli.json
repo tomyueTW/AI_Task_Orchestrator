@@ -53,6 +53,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/observability/tsconfig.lib.json"
       }
+    },
+    "cost-governor": {
+      "type": "library",
+      "root": "libs/cost-governor",
+      "entryFile": "index",
+      "sourceRoot": "libs/cost-governor/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/cost-governor/tsconfig.lib.json"
+      }
     }
   }
 }

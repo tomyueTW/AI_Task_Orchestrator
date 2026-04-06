@@ -16,6 +16,8 @@ export class MetricsService {
   readonly taskFailed: Counter;
   readonly taskDlq: Counter;
   readonly taskTimeout: Counter;
+  readonly taskCostUsd: Counter;
+  readonly taskTokens: Counter;
   readonly queueDepth: Gauge;
 
   constructor() {
@@ -51,6 +53,19 @@ export class MetricsService {
     this.taskTimeout = new Counter({
       name: 'task_timeout_total',
       help: 'Total number of task timeouts (SLA violations)',
+      registers: [this.registry],
+    });
+
+    this.taskCostUsd = new Counter({
+      name: 'task_cost_usd_total',
+      help: 'Total cost in USD across all tasks',
+      registers: [this.registry],
+    });
+
+    this.taskTokens = new Counter({
+      name: 'task_tokens_total',
+      help: 'Total tokens consumed',
+      labelNames: ['direction'] as const,
       registers: [this.registry],
     });
 

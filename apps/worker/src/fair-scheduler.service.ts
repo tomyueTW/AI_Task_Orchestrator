@@ -6,6 +6,7 @@ import Redis from 'ioredis';
 import { TASK_QUEUE_PREFIX, TASK_DLQ } from '@app/queue';
 import { REDIS_CONNECTION, RedisConnectionConfig } from '@app/queue/queue.module';
 import { MetricsService } from '@app/observability';
+import { LlmService, CostTrackerService } from '@app/cost-governor';
 
 @Injectable()
 export class FairScheduler implements OnModuleInit, OnModuleDestroy {
@@ -21,6 +22,8 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
     @Inject(REDIS_CONNECTION) private readonly redisConfig: RedisConnectionConfig,
     private readonly config: ConfigService,
     private readonly metrics: MetricsService,
+    private readonly llm: LlmService,
+    private readonly costTracker: CostTrackerService,
     @InjectQueue(TASK_DLQ) private readonly dlqQueue: Queue,
   ) {
     this.redis = new Redis(redisConfig);
@@ -132,6 +135,8 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
     }
 
     const { payload } = job.data;
+    const modelId = job.data.model ?? this.llm.registry.getDefaultModel().id;
+    const prompt = (payload.prompt as string) ?? JSON.stringify(payload);
 
     // Hard timeout wrapper
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -141,17 +146,30 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
       );
     });
 
-    // Simulate AI task processing (1-3s)
-    const duration = 1000 + Math.random() * 2000;
-    const workPromise = new Promise<void>((resolve) => setTimeout(resolve, duration));
+    // Call real LLM API
+    const llmResponse = await Promise.race([
+      this.llm.call(modelId, prompt),
+      timeoutPromise,
+    ]);
 
-    await Promise.race([workPromise, timeoutPromise]);
+    const costRecord = this.costTracker.record(
+      job.id!,
+      llmResponse.model,
+      llmResponse.inputTokens,
+      llmResponse.outputTokens,
+    );
 
     const durationSec = (Date.now() - start) / 1000;
     this.metrics.taskDuration.observe({ status: 'completed' }, durationSec);
 
-    this.logger.log(`Job ${job.id} processed in ${Math.round(duration)}ms`);
+    this.logger.log(`Job ${job.id} processed in ${Math.round(durationSec * 1000)}ms`);
 
-    return { result: 'ok', processedAt: new Date().toISOString(), payload };
+    return {
+      result: llmResponse.content,
+      model: llmResponse.model,
+      tokenUsage: { input: llmResponse.inputTokens, output: llmResponse.outputTokens },
+      cost: costRecord.costUsd,
+      processedAt: new Date().toISOString(),
+    };
   }
 }

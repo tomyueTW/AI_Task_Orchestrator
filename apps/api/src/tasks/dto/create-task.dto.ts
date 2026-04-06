@@ -10,6 +10,10 @@ export class CreateTaskDto {
   @IsEnum(TaskPriority)
   priority?: TaskPriority;
 
+  @IsOptional()
+  @IsString()
+  model?: string;
+
   @IsNotEmpty()
   @IsObject()
   payload!: Record<string, unknown>;

@@ -54,6 +54,7 @@ export class TasksService implements OnModuleDestroy {
     userId: string,
     payload: Record<string, unknown>,
     priority: TaskPriority = TaskPriority.NORMAL,
+    model?: string,
   ): Promise<Task> {
     const id = uuidv4();
     const createdAt = new Date().toISOString();
@@ -61,11 +62,11 @@ export class TasksService implements OnModuleDestroy {
 
     await queue.add(
       'process',
-      { id, userId, priority, payload, createdAt },
+      { id, userId, priority, model, payload, createdAt },
       { jobId: id, priority: PRIORITY_MAP[priority] },
     );
 
-    return { id, userId, priority, status: TaskStatus.PENDING, payload, createdAt };
+    return { id, userId, priority, model, status: TaskStatus.PENDING, payload, createdAt };
   }
 
   async findOne(id: string, userId: string): Promise<Task> {

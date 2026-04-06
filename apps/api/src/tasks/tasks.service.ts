@@ -5,6 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   Task,
   TaskStatus,
+  TaskPriority,
+  PRIORITY_MAP,
   TASK_DLQ,
   getUserQueueName,
 } from '@app/queue';
@@ -48,18 +50,22 @@ export class TasksService implements OnModuleDestroy {
     return queue;
   }
 
-  async create(userId: string, payload: Record<string, unknown>): Promise<Task> {
+  async create(
+    userId: string,
+    payload: Record<string, unknown>,
+    priority: TaskPriority = TaskPriority.NORMAL,
+  ): Promise<Task> {
     const id = uuidv4();
     const createdAt = new Date().toISOString();
     const queue = this.getQueue(userId);
 
     await queue.add(
       'process',
-      { id, userId, payload, createdAt },
-      { jobId: id },
+      { id, userId, priority, payload, createdAt },
+      { jobId: id, priority: PRIORITY_MAP[priority] },
     );
 
-    return { id, userId, status: TaskStatus.PENDING, payload, createdAt };
+    return { id, userId, priority, status: TaskStatus.PENDING, payload, createdAt };
   }
 
   async findOne(id: string, userId: string): Promise<Task> {
@@ -74,6 +80,7 @@ export class TasksService implements OnModuleDestroy {
     return {
       id: job.opts.jobId as string,
       userId: job.data.userId,
+      priority: job.data.priority ?? TaskPriority.NORMAL,
       status: STATE_MAP[state] ?? TaskStatus.PENDING,
       payload: job.data.payload,
       createdAt: job.data.createdAt,
@@ -106,19 +113,20 @@ export class TasksService implements OnModuleDestroy {
       throw new NotFoundException(`DLQ job ${dlqJobId} not found`);
     }
 
-    const { userId, payload, createdAt } = dlqJob.data;
+    const { userId, priority, payload, createdAt } = dlqJob.data;
+    const taskPriority = priority ?? TaskPriority.NORMAL;
     const id = uuidv4();
     const queue = this.getQueue(userId);
 
     await queue.add(
       'process',
-      { id, userId, payload, createdAt },
-      { jobId: id },
+      { id, userId, priority: taskPriority, payload, createdAt },
+      { jobId: id, priority: PRIORITY_MAP[taskPriority as TaskPriority] },
     );
 
     await dlqJob.remove();
 
-    return { id, userId, status: TaskStatus.PENDING, payload, createdAt };
+    return { id, userId, priority: taskPriority, status: TaskStatus.PENDING, payload, createdAt };
   }
 
   async onModuleDestroy() {

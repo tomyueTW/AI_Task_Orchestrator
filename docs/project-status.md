@@ -44,7 +44,7 @@
 | 週 | 主題 | 狀態 | 完成內容 |
 |---|---|---|---|
 | W1 | 一用戶一隊列 (Fair Scheduling) | ✅ | userId 欄位、per-user 動態佇列 `tasks-user-{userId}`、FairScheduler round-robin worker |
-| W2 | 權重優先級 (Priority) | ⏳ | |
+| W2 | 權重優先級 (Priority) | ✅ | TaskPriority enum (critical/high/normal/low)、BullMQ 內建 priority 搶佔 |
 | W3 | SLA 與超時管理 | ⏳ | |
 | W4 | 影片 #1 + 總結 | ⏳ | |
 
@@ -152,6 +152,7 @@ docker/
 | 死信隊列 | 重試耗盡自動轉 DLQ + 手動恢復 API | 5月 W2 |
 | 可觀測性 | Prometheus metrics + Grafana dashboard | 5月 W3 |
 | 公平調度 | Per-user queues + FairScheduler round-robin | 6月 W1 |
+| 優先級搶佔 | TaskPriority (critical/high/normal/low) → BullMQ priority | 6月 W2 |
 
 ---
 

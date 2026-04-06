@@ -5,9 +5,24 @@ export enum TaskStatus {
   FAILED = 'FAILED',
 }
 
+export enum TaskPriority {
+  CRITICAL = 'critical',
+  HIGH = 'high',
+  NORMAL = 'normal',
+  LOW = 'low',
+}
+
+export const PRIORITY_MAP: Record<TaskPriority, number> = {
+  [TaskPriority.CRITICAL]: 1,
+  [TaskPriority.HIGH]: 2,
+  [TaskPriority.NORMAL]: 3,
+  [TaskPriority.LOW]: 4,
+};
+
 export interface Task {
   id: string;
   userId: string;
+  priority: TaskPriority;
   status: TaskStatus;
   payload: Record<string, unknown>;
   createdAt: string;

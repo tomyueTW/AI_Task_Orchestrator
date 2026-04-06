@@ -112,7 +112,7 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
 
   private async processJob(job: Job): Promise<Record<string, unknown>> {
     this.logger.log(
-      `Processing job ${job.id} for user ${job.data.userId} (attempt ${job.attemptsMade + 1}/${job.opts.attempts})`,
+      `Processing job ${job.id} [priority=${job.data.priority ?? 'normal'}] for user ${job.data.userId} (attempt ${job.attemptsMade + 1}/${job.opts.attempts})`,
     );
 
     const start = Date.now();

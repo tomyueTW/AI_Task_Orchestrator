@@ -111,6 +111,10 @@ PENDING → ACTIVE → COMPLETED
 
 Each user gets an isolated queue (`tasks-user-{userId}`). A `FairScheduler` dynamically discovers user queues and creates independent workers for each, ensuring one user's burst of tasks doesn't block others.
 
+### Priority Scheduling
+
+Tasks support four priority levels: `critical` > `high` > `normal` (default) > `low`. Higher priority tasks are processed before lower priority ones within the same user queue.
+
 ### Retry & Dead Letter Queue (DLQ)
 
 Failed tasks are automatically retried up to 3 times with exponential backoff (1s, 2s, 4s). Tasks that exhaust all retries are moved to a Dead Letter Queue for manual inspection and recovery.
@@ -143,7 +147,7 @@ Grafana dashboard available at `http://localhost:3001` (admin/admin) with panels
 curl -X POST http://localhost:3000/tasks \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: unique-request-id" \
-  -d '{"userId": "alice", "payload": {"prompt": "hello world"}}'
+  -d '{"userId": "alice", "priority": "high", "payload": {"prompt": "hello world"}}'
 ```
 
 The optional `Idempotency-Key` header prevents duplicate task creation. Sending the same key twice returns the original response without creating a new job.

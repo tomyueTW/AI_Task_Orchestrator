@@ -17,7 +17,9 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@app/queue": ["libs/queue/src"],
-      "@app/queue/*": ["libs/queue/src/*"]
+      "@app/queue/*": ["libs/queue/src/*"],
+      "@app/idempotency": ["libs/idempotency/src"],
+      "@app/idempotency/*": ["libs/idempotency/src/*"]
     }
   }
 }

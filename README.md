@@ -81,6 +81,7 @@ Default values work with the Docker Compose setup.
 | `REDIS_PORT` | `6379` | Redis port |
 | `WORKER_CONCURRENCY` | `3` | Max parallel jobs per worker |
 | `BACKPRESSURE_THRESHOLD` | `CONCURRENCY × 100` | Queue depth limit before 429 |
+| `IDEMPOTENCY_TTL_SECONDS` | `86400` | Idempotency key TTL (24h) |
 
 ### 4. Run the API + Worker
 
@@ -116,8 +117,11 @@ The worker waits for all active jobs to complete before exiting. Send `SIGTERM` 
 ```bash
 curl -X POST http://localhost:3000/tasks \
   -H "Content-Type: application/json" \
+  -H "Idempotency-Key: unique-request-id" \
   -d '{"payload": {"prompt": "hello world"}}'
 ```
+
+The optional `Idempotency-Key` header prevents duplicate task creation. Sending the same key twice returns the original response without creating a new job.
 
 Response (`201 Created`):
 

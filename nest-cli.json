@@ -35,6 +35,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/queue/tsconfig.lib.json"
       }
+    },
+    "idempotency": {
+      "type": "library",
+      "root": "libs/idempotency",
+      "entryFile": "index",
+      "sourceRoot": "libs/idempotency/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/idempotency/tsconfig.lib.json"
+      }
     }
   }
 }

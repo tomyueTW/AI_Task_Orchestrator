@@ -17,6 +17,11 @@ import { TASK_QUEUE } from './task.interface';
     }),
     BullModule.registerQueue({
       name: TASK_QUEUE,
+      defaultJobOptions: {
+        attempts: 3,
+        removeOnComplete: { count: 1000 },
+        removeOnFail: { count: 5000 },
+      },
     }),
   ],
   exports: [BullModule],

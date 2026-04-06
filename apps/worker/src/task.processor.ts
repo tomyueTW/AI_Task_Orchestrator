@@ -1,11 +1,31 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
 import { TASK_QUEUE } from '@app/queue';
 
 @Processor(TASK_QUEUE)
-export class TaskProcessor extends WorkerHost {
+export class TaskProcessor
+  extends WorkerHost
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(TaskProcessor.name);
+
+  constructor(private readonly config: ConfigService) {
+    super();
+  }
+
+  onModuleInit() {
+    const concurrency = parseInt(this.config.get('WORKER_CONCURRENCY', '3'), 10);
+    this.worker.concurrency = concurrency;
+    this.logger.log(`Worker started with concurrency=${concurrency}`);
+  }
+
+  async onModuleDestroy() {
+    this.logger.log('Worker shutting down — waiting for active jobs...');
+    await this.worker.close();
+    this.logger.log('Worker closed gracefully');
+  }
 
   async process(job: Job): Promise<Record<string, unknown>> {
     this.logger.log(`Processing job ${job.id} — name: ${job.name}`);

@@ -73,7 +73,13 @@ docker compose -f docker/docker-compose.yml up -d
 cp .env.example .env
 ```
 
-Default values (`localhost:6379`) work with the Docker Compose setup.
+Default values work with the Docker Compose setup.
+
+| Variable | Default | Description |
+|---|---|---|
+| `REDIS_HOST` | `localhost` | Redis host |
+| `REDIS_PORT` | `6379` | Redis port |
+| `WORKER_CONCURRENCY` | `3` | Max parallel jobs per worker |
 
 ### 4. Run the API + Worker
 
@@ -91,8 +97,12 @@ The API starts on `http://localhost:3000`.
 
 ```
 PENDING → ACTIVE → COMPLETED
-                 → FAILED
+                 → FAILED (auto-retry up to 3 attempts)
 ```
+
+### Graceful Shutdown
+
+The worker waits for all active jobs to complete before exiting. Send `SIGTERM` or `SIGINT` to trigger graceful shutdown. Stalled jobs (from crashed workers) are automatically re-queued by BullMQ.
 
 ## API
 

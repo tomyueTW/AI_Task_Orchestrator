@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { QueueModule } from '@app/queue';
+import { ObservabilityModule } from '@app/observability';
 import { TaskProcessor } from './task.processor';
 
 @Module({
@@ -10,6 +11,7 @@ import { TaskProcessor } from './task.processor';
       envFilePath: '.env',
     }),
     QueueModule,
+    ObservabilityModule,
   ],
   providers: [TaskProcessor],
 })

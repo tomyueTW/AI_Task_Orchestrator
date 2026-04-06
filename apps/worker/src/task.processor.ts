@@ -3,6 +3,7 @@ import { Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job, Queue } from 'bullmq';
 import { TASK_QUEUE, TASK_DLQ } from '@app/queue';
+import { MetricsService } from '@app/observability';
 
 @Processor(TASK_QUEUE)
 export class TaskProcessor
@@ -14,6 +15,7 @@ export class TaskProcessor
 
   constructor(
     private readonly config: ConfigService,
+    private readonly metrics: MetricsService,
     @InjectQueue(TASK_DLQ) private readonly dlqQueue: Queue,
   ) {
     super();
@@ -40,8 +42,12 @@ export class TaskProcessor
       `Processing job ${job.id} (attempt ${job.attemptsMade + 1}/${job.opts.attempts})`,
     );
 
+    const start = Date.now();
+
     // Simulate failure for testing
     if (this.failureRate > 0 && Math.random() < this.failureRate) {
+      const durationSec = (Date.now() - start) / 1000;
+      this.metrics.taskDuration.observe({ status: 'failed' }, durationSec);
       throw new Error(`Simulated failure for job ${job.id}`);
     }
 
@@ -51,6 +57,9 @@ export class TaskProcessor
     const duration = 1000 + Math.random() * 2000;
     await new Promise((resolve) => setTimeout(resolve, duration));
 
+    const durationSec = (Date.now() - start) / 1000;
+    this.metrics.taskDuration.observe({ status: 'completed' }, durationSec);
+
     this.logger.log(`Job ${job.id} processed in ${Math.round(duration)}ms`);
 
     return { result: 'ok', processedAt: new Date().toISOString(), payload };
@@ -58,6 +67,7 @@ export class TaskProcessor
 
   @OnWorkerEvent('completed')
   onCompleted(job: Job) {
+    this.metrics.taskCompleted.inc();
     this.logger.log(`Job ${job.id} completed`);
   }
 
@@ -65,12 +75,14 @@ export class TaskProcessor
   async onFailed(job: Job | undefined, error: Error) {
     if (!job) return;
 
+    this.metrics.taskFailed.inc();
     const maxAttempts = job.opts.attempts ?? 1;
 
     if (job.attemptsMade >= maxAttempts) {
       this.logger.error(
         `Job ${job.id} exhausted all ${maxAttempts} attempts — moving to DLQ`,
       );
+      this.metrics.taskDlq.inc();
       await this.dlqQueue.add('dead-letter', {
         ...job.data,
         originalJobId: job.id,

@@ -44,7 +44,10 @@ ai-task-orchestrator/
 | NestJS | ^11.x | Application framework |
 | BullMQ | ^5.73 | Task queue engine |
 | ioredis | ^5.10 | Redis client |
+| prom-client | ^15.1 | Prometheus metrics |
 | Redis | 7.2 (Alpine) | Queue storage |
+| Prometheus | v2.53 | Metrics collection |
+| Grafana | 11.1 | Dashboard visualization |
 | Docker Compose | v2 | Local infrastructure |
 
 ## Prerequisites
@@ -114,6 +117,18 @@ When `waiting + active` jobs exceed the threshold (`WORKER_CONCURRENCY × 100` b
 ### Graceful Shutdown
 
 The worker waits for all active jobs to complete before exiting. Send `SIGTERM` or `SIGINT` to trigger graceful shutdown. Stalled jobs (from crashed workers) are automatically re-queued by BullMQ.
+
+### Observability
+
+Prometheus metrics are exposed on two endpoints:
+- **API** `http://localhost:3000/metrics` — queue depth gauges
+- **Worker** `http://localhost:9091/` — processing duration histogram, completed/failed/DLQ counters
+
+Grafana dashboard available at `http://localhost:3001` (admin/admin) with panels for:
+- Task Processing Rate (completed/s, failed/s)
+- Queue Depth (waiting, active, DLQ)
+- P99/P50 Processing Latency
+- Error Rate & DLQ Count
 
 ## API
 

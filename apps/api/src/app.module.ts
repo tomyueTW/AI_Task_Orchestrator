@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ObservabilityModule } from '@app/observability';
 import { TasksModule } from './tasks/tasks.module';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
@@ -8,7 +10,9 @@ import { TasksModule } from './tasks/tasks.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ObservabilityModule,
     TasksModule,
+    MetricsModule,
   ],
 })
 export class AppModule {}

@@ -1,0 +1,119 @@
+# AI Task Orchestrator
+
+Industrial-grade AI task orchestrator built with backpressure control, idempotency, and observability.
+
+## Architecture
+
+```
+ai-task-orchestrator/
+├── apps/
+│   └── api/                    # NestJS HTTP API
+│       └── src/
+│           ├── main.ts
+│           ├── app.module.ts
+│           └── tasks/
+│               ├── tasks.module.ts
+│               ├── tasks.controller.ts   # POST /tasks
+│               ├── tasks.service.ts
+│               └── dto/
+│                   └── create-task.dto.ts
+├── libs/
+│   └── queue/                  # BullMQ queue abstraction
+│       └── src/
+│           ├── index.ts
+│           ├── task.interface.ts          # Task, TaskStatus
+│           └── queue.module.ts
+├── docker/
+│   └── docker-compose.yml      # Redis 7.2
+└── docs/
+    ├── execution-plans.md
+    └── ADR-001-nestjs-bullmq-core-engine.md
+```
+
+## Tech Stack
+
+| Technology | Version | Purpose |
+|---|---|---|
+| Node.js | v25.x | Runtime |
+| TypeScript | ^5.9 | Language |
+| NestJS | ^11.x | Application framework |
+| BullMQ | ^5.73 | Task queue engine |
+| ioredis | ^5.10 | Redis client |
+| Redis | 7.2 (Alpine) | Queue storage |
+| Docker Compose | v2 | Local infrastructure |
+
+## Prerequisites
+
+- Node.js >= 20
+- Docker & Docker Compose
+- npm
+
+## Getting Started
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Start Redis
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+```
+
+### 3. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Default values (`localhost:6379`) work with the Docker Compose setup.
+
+### 4. Run the API
+
+```bash
+# Development (watch mode)
+npm run start:dev
+
+# Production build
+npm run build
+npm run start:prod
+```
+
+The API starts on `http://localhost:3000`.
+
+## API
+
+### Create Task
+
+```bash
+curl -X POST http://localhost:3000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"payload": {"prompt": "hello world"}}'
+```
+
+Response (`201 Created`):
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "PENDING",
+  "payload": { "prompt": "hello world" },
+  "createdAt": "2026-04-06T08:00:00.000Z"
+}
+```
+
+## Scripts
+
+| Command | Description |
+|---|---|
+| `npm run start:dev` | Start API in watch mode |
+| `npm run build` | Build the project |
+| `npm run start:prod` | Run production build |
+| `npm test` | Run unit tests |
+| `npm run test:e2e` | Run end-to-end tests |
+
+## License
+
+MIT

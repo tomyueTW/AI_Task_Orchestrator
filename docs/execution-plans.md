@@ -328,16 +328,4 @@ perf(cache): implement semantic cache for AI responses
 
 ---
 
-## 八、關鍵技術決策索引 (ADR Index)
-
-| ADR | 標題 | 狀態 |
-|-----|------|------|
-| ADR-001 | 選用 NestJS + BullMQ 作為核心引擎 | ✅ Accepted |
-| ADR-002 | 冪等性實作策略 (Redis SET NX) | 🔄 Draft |
-| ADR-003 | 可觀測性技術棧選型 (OTel + Pino) | 🔄 Draft |
-| ADR-004 | 背壓演算法選型 (Token Bucket vs Sliding Window) | ⏳ Pending |
-| ADR-005 | AI 語意快取策略 | ⏳ Pending |
-
----
-
 *最後更新：2026-04-06 | 版本：v0.2.0*

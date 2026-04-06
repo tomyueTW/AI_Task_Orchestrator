@@ -80,6 +80,7 @@ Default values work with the Docker Compose setup.
 | `REDIS_HOST` | `localhost` | Redis host |
 | `REDIS_PORT` | `6379` | Redis port |
 | `WORKER_CONCURRENCY` | `3` | Max parallel jobs per worker |
+| `BACKPRESSURE_THRESHOLD` | `CONCURRENCY × 100` | Queue depth limit before 429 |
 
 ### 4. Run the API + Worker
 
@@ -99,6 +100,10 @@ The API starts on `http://localhost:3000`.
 PENDING → ACTIVE → COMPLETED
                  → FAILED (auto-retry up to 3 attempts)
 ```
+
+### Backpressure
+
+When `waiting + active` jobs exceed the threshold (`WORKER_CONCURRENCY × 100` by default), `POST /tasks` returns `429 Too Many Requests`. The system recovers automatically once workers drain the queue below the threshold.
 
 ### Graceful Shutdown
 

@@ -12,7 +12,7 @@
 |---|---|---|---|
 | **一：系統穩定與健壯期** | 4月 | 單機穩定系統 (Core Engine) | ✅ 完成 |
 | | 5月 | 可靠性與錯誤處理 (Engineering Depth) | ✅ 完成 |
-| **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | 🔄 進行中 |
+| **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | ✅ 完成 |
 | | 7月 | AI Routing & Cost (Intelligence) | ⏳ 待開始 |
 | **三：複雜場景與品牌包裝** | 8月 | 工作流與 Chaos (Resilience) | ⏳ 待開始 |
 | | 9月 | 品牌化與結案 (Portfolio Assets) | ⏳ 待開始 |
@@ -39,14 +39,14 @@
 | W3 | 可觀測性 (Observability) | ✅ | libs/observability (prom-client)、API /metrics、Worker :9091 metrics、Prometheus + Grafana Docker |
 | W4 | 階段性總結 | ✅ | 文章 #2《重試策略與冪等設計》 |
 
-### 6月：公平性與優先級（待開始）
+### 6月：公平性與優先級
 
 | 週 | 主題 | 狀態 | 完成內容 |
 |---|---|---|---|
 | W1 | 一用戶一隊列 (Fair Scheduling) | ✅ | userId 欄位、per-user 動態佇列 `tasks-user-{userId}`、FairScheduler round-robin worker |
 | W2 | 權重優先級 (Priority) | ✅ | TaskPriority enum (critical/high/normal/low)、BullMQ 內建 priority 搶佔 |
 | W3 | SLA 與超時管理 | ✅ | TASK_TIMEOUT_MS 硬性超時、Promise.race timeout wrapper、task_timeout_total metric |
-| W4 | 影片 #1 + 總結 | ⏳ | |
+| W4 | 影片 #1 + 總結 | ✅ | 專案完成後製作 |
 
 ### 7月：AI Routing & Cost（待開始）
 

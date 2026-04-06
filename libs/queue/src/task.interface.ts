@@ -13,3 +13,4 @@ export interface Task {
 }
 
 export const TASK_QUEUE = 'tasks';
+export const TASK_DLQ = 'tasks-dlq';

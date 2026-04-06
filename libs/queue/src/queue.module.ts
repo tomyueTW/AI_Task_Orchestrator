@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TASK_QUEUE } from './task.interface';
+import { TASK_QUEUE, TASK_DLQ } from './task.interface';
 
 @Module({
   imports: [
@@ -19,9 +19,13 @@ import { TASK_QUEUE } from './task.interface';
       name: TASK_QUEUE,
       defaultJobOptions: {
         attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
         removeOnComplete: { count: 1000 },
         removeOnFail: { count: 5000 },
       },
+    }),
+    BullModule.registerQueue({
+      name: TASK_DLQ,
     }),
   ],
   exports: [BullModule],

@@ -99,8 +99,13 @@ The API starts on `http://localhost:3000`.
 
 ```
 PENDING → ACTIVE → COMPLETED
-                 → FAILED (auto-retry up to 3 attempts)
+                 → FAILED (auto-retry with exponential backoff: 1s → 2s → 4s)
+                        → DLQ (after 3 failed attempts)
 ```
+
+### Retry & Dead Letter Queue (DLQ)
+
+Failed tasks are automatically retried up to 3 times with exponential backoff (1s, 2s, 4s). Tasks that exhaust all retries are moved to a Dead Letter Queue for manual inspection and recovery.
 
 ### Backpressure
 
@@ -150,6 +155,20 @@ Response (`200 OK`):
   "createdAt": "2026-04-06T08:00:00.000Z"
 }
 ```
+
+### List Dead Letter Queue
+
+```bash
+curl http://localhost:3000/tasks/dlq
+```
+
+### Retry DLQ Task
+
+```bash
+curl -X POST http://localhost:3000/tasks/dlq/{dlqJobId}/retry
+```
+
+Re-enqueues the task from DLQ back to the main queue with a new ID.
 
 ## Scripts
 

@@ -18,6 +18,17 @@ export class TasksController {
     return this.tasksService.create(dto.payload);
   }
 
+  @Get('dlq')
+  async findDlq(): Promise<unknown[]> {
+    return this.tasksService.findDlq();
+  }
+
+  @Post('dlq/:id/retry')
+  @HttpCode(HttpStatus.CREATED)
+  async retryFromDlq(@Param('id') id: string): Promise<Task> {
+    return this.tasksService.retryFromDlq(id);
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string): Promise<Task> {
     return this.tasksService.findOne(id);

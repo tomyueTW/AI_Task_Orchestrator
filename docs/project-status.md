@@ -1,6 +1,6 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.2.0
+> **版本：** v0.3.0
 > **最後更新：** 2026-04-06
 > **計畫週期：** 2026年4月 ─ 9月
 
@@ -12,7 +12,7 @@
 |---|---|---|---|
 | **一：系統穩定與健壯期** | 4月 | 單機穩定系統 (Core Engine) | ✅ 完成 |
 | | 5月 | 可靠性與錯誤處理 (Engineering Depth) | ✅ 完成 |
-| **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | ⏳ 待開始 |
+| **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | 🔄 進行中 |
 | | 7月 | AI Routing & Cost (Intelligence) | ⏳ 待開始 |
 | **三：複雜場景與品牌包裝** | 8月 | 工作流與 Chaos (Resilience) | ⏳ 待開始 |
 | | 9月 | 品牌化與結案 (Portfolio Assets) | ⏳ 待開始 |
@@ -41,12 +41,12 @@
 
 ### 6月：公平性與優先級（待開始）
 
-| 週 | 主題 | 狀態 |
-|---|---|---|
-| W1 | 一用戶一隊列 (Fair Scheduling) | ⏳ |
-| W2 | 權重優先級 (Priority) | ⏳ |
-| W3 | SLA 與超時管理 | ⏳ |
-| W4 | 影片 #1 + 總結 | ⏳ |
+| 週 | 主題 | 狀態 | 完成內容 |
+|---|---|---|---|
+| W1 | 一用戶一隊列 (Fair Scheduling) | ✅ | userId 欄位、per-user 動態佇列 `tasks-user-{userId}`、FairScheduler round-robin worker |
+| W2 | 權重優先級 (Priority) | ⏳ | |
+| W3 | SLA 與超時管理 | ⏳ | |
+| W4 | 影片 #1 + 總結 | ⏳ | |
 
 ### 7月：AI Routing & Cost（待開始）
 
@@ -151,6 +151,7 @@ docker/
 | 指數退避重試 | BullMQ backoff: 1s → 2s → 4s | 5月 W2 |
 | 死信隊列 | 重試耗盡自動轉 DLQ + 手動恢復 API | 5月 W2 |
 | 可觀測性 | Prometheus metrics + Grafana dashboard | 5月 W3 |
+| 公平調度 | Per-user queues + FairScheduler round-robin | 6月 W1 |
 
 ---
 
@@ -164,6 +165,7 @@ docker/
 | `BACKPRESSURE_THRESHOLD` | `CONCURRENCY×100` | 背壓閾值 | 4月 W4 |
 | `IDEMPOTENCY_TTL_SECONDS` | `86400` | 冪等 key TTL | 5月 W1 |
 | `TASK_FAILURE_RATE` | `0` | 失敗模擬（測試用） | 5月 W2 |
+| `MAX_CONCURRENCY_PER_USER` | `1` | 每用戶最大並行數 | 6月 W1 |
 
 ---
 
@@ -208,4 +210,4 @@ docker/
 
 ---
 
-*最後更新：2026-04-06 | 版本：v0.2.0*
+*最後更新：2026-04-06 | 版本：v0.3.0*

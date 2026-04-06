@@ -10,5 +10,6 @@ import { IdempotencyInterceptor } from './interceptors/idempotency.interceptor';
   imports: [QueueModule, IdempotencyModule],
   controllers: [TasksController],
   providers: [TasksService, BackpressureGuard, IdempotencyInterceptor],
+  exports: [TasksService],
 })
 export class TasksModule {}

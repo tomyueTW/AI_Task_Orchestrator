@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, UseGuards, UseInterceptors, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, UseGuards, UseInterceptors, UsePipes, ValidationPipe } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { BackpressureGuard } from './guards/backpressure.guard';
@@ -15,7 +15,7 @@ export class TasksController {
   @UseInterceptors(IdempotencyInterceptor)
   @UsePipes(new ValidationPipe({ whitelist: true }))
   async create(@Body() dto: CreateTaskDto): Promise<Task> {
-    return this.tasksService.create(dto.payload);
+    return this.tasksService.create(dto.userId, dto.payload);
   }
 
   @Get('dlq')
@@ -30,7 +30,10 @@ export class TasksController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string): Promise<Task> {
-    return this.tasksService.findOne(id);
+  async findOne(
+    @Param('id') id: string,
+    @Query('userId') userId: string,
+  ): Promise<Task> {
+    return this.tasksService.findOne(id, userId);
   }
 }

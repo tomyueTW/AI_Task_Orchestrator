@@ -85,6 +85,7 @@ Default values work with the Docker Compose setup.
 | `WORKER_CONCURRENCY` | `3` | Max parallel jobs per worker |
 | `BACKPRESSURE_THRESHOLD` | `CONCURRENCY × 100` | Queue depth limit before 429 |
 | `IDEMPOTENCY_TTL_SECONDS` | `86400` | Idempotency key TTL (24h) |
+| `MAX_CONCURRENCY_PER_USER` | `1` | Max parallel jobs per user queue |
 
 ### 4. Run the API + Worker
 
@@ -105,6 +106,10 @@ PENDING → ACTIVE → COMPLETED
                  → FAILED (auto-retry with exponential backoff: 1s → 2s → 4s)
                         → DLQ (after 3 failed attempts)
 ```
+
+### Fair Scheduling (Per-User Queues)
+
+Each user gets an isolated queue (`tasks-user-{userId}`). A `FairScheduler` dynamically discovers user queues and creates independent workers for each, ensuring one user's burst of tasks doesn't block others.
 
 ### Retry & Dead Letter Queue (DLQ)
 
@@ -138,7 +143,7 @@ Grafana dashboard available at `http://localhost:3001` (admin/admin) with panels
 curl -X POST http://localhost:3000/tasks \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: unique-request-id" \
-  -d '{"payload": {"prompt": "hello world"}}'
+  -d '{"userId": "alice", "payload": {"prompt": "hello world"}}'
 ```
 
 The optional `Idempotency-Key` header prevents duplicate task creation. Sending the same key twice returns the original response without creating a new job.

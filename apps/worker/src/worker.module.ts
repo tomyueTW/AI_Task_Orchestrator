@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { QueueModule } from '@app/queue';
 import { ObservabilityModule } from '@app/observability';
-import { TaskProcessor } from './task.processor';
+import { FairScheduler } from './fair-scheduler.service';
 
 @Module({
   imports: [
@@ -13,6 +13,6 @@ import { TaskProcessor } from './task.processor';
     QueueModule,
     ObservabilityModule,
   ],
-  providers: [TaskProcessor],
+  providers: [FairScheduler],
 })
 export class WorkerModule {}

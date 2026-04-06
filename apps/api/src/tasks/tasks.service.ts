@@ -1,8 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
-import { Task, TaskStatus, TASK_QUEUE, TASK_DLQ } from '@app/queue';
+import {
+  Task,
+  TaskStatus,
+  TASK_DLQ,
+  getUserQueueName,
+} from '@app/queue';
+import { REDIS_CONNECTION, RedisConnectionConfig } from '@app/queue/queue.module';
 
 const STATE_MAP: Record<string, TaskStatus> = {
   waiting: TaskStatus.PENDING,
@@ -14,33 +20,51 @@ const STATE_MAP: Record<string, TaskStatus> = {
   failed: TaskStatus.FAILED,
 };
 
+const DEFAULT_JOB_OPTIONS = {
+  attempts: 3,
+  backoff: { type: 'exponential' as const, delay: 1000 },
+  removeOnComplete: { count: 1000 },
+  removeOnFail: { count: 5000 },
+};
+
 @Injectable()
-export class TasksService {
+export class TasksService implements OnModuleDestroy {
+  private readonly userQueues = new Map<string, Queue>();
+
   constructor(
-    @InjectQueue(TASK_QUEUE) private readonly taskQueue: Queue,
+    @Inject(REDIS_CONNECTION) private readonly redisConfig: RedisConnectionConfig,
     @InjectQueue(TASK_DLQ) private readonly dlqQueue: Queue,
   ) {}
 
-  async create(payload: Record<string, unknown>): Promise<Task> {
+  private getQueue(userId: string): Queue {
+    const existing = this.userQueues.get(userId);
+    if (existing) return existing;
+
+    const queue = new Queue(getUserQueueName(userId), {
+      connection: this.redisConfig,
+      defaultJobOptions: DEFAULT_JOB_OPTIONS,
+    });
+    this.userQueues.set(userId, queue);
+    return queue;
+  }
+
+  async create(userId: string, payload: Record<string, unknown>): Promise<Task> {
     const id = uuidv4();
     const createdAt = new Date().toISOString();
+    const queue = this.getQueue(userId);
 
-    await this.taskQueue.add(
+    await queue.add(
       'process',
-      { id, payload, createdAt },
+      { id, userId, payload, createdAt },
       { jobId: id },
     );
 
-    return {
-      id,
-      status: TaskStatus.PENDING,
-      payload,
-      createdAt,
-    };
+    return { id, userId, status: TaskStatus.PENDING, payload, createdAt };
   }
 
-  async findOne(id: string): Promise<Task> {
-    const job = await this.taskQueue.getJob(id);
+  async findOne(id: string, userId: string): Promise<Task> {
+    const queue = this.getQueue(userId);
+    const job = await queue.getJob(id);
     if (!job) {
       throw new NotFoundException(`Task ${id} not found`);
     }
@@ -49,10 +73,18 @@ export class TasksService {
 
     return {
       id: job.opts.jobId as string,
+      userId: job.data.userId,
       status: STATE_MAP[state] ?? TaskStatus.PENDING,
       payload: job.data.payload,
       createdAt: job.data.createdAt,
     };
+  }
+
+  async getQueueDepth(userId: string): Promise<number> {
+    const queue = this.getQueue(userId);
+    const waiting = await queue.getWaitingCount();
+    const active = await queue.getActiveCount();
+    return waiting + active;
   }
 
   async findDlq(): Promise<unknown[]> {
@@ -60,6 +92,7 @@ export class TasksService {
     return jobs.map((job) => ({
       dlqJobId: job.id,
       originalJobId: job.data.originalJobId,
+      userId: job.data.userId,
       payload: job.data.payload,
       failedReason: job.data.failedReason,
       failedAt: job.data.failedAt,
@@ -73,22 +106,23 @@ export class TasksService {
       throw new NotFoundException(`DLQ job ${dlqJobId} not found`);
     }
 
-    const { payload, createdAt } = dlqJob.data;
+    const { userId, payload, createdAt } = dlqJob.data;
     const id = uuidv4();
+    const queue = this.getQueue(userId);
 
-    await this.taskQueue.add(
+    await queue.add(
       'process',
-      { id, payload, createdAt },
+      { id, userId, payload, createdAt },
       { jobId: id },
     );
 
     await dlqJob.remove();
 
-    return {
-      id,
-      status: TaskStatus.PENDING,
-      payload,
-      createdAt,
-    };
+    return { id, userId, status: TaskStatus.PENDING, payload, createdAt };
+  }
+
+  async onModuleDestroy() {
+    const closePromises = Array.from(this.userQueues.values()).map((q) => q.close());
+    await Promise.all(closePromises);
   }
 }

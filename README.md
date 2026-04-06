@@ -7,16 +7,21 @@ Industrial-grade AI task orchestrator built with backpressure control, idempoten
 ```
 ai-task-orchestrator/
 ├── apps/
-│   └── api/                    # NestJS HTTP API
+│   ├── api/                    # NestJS HTTP API
+│   │   └── src/
+│   │       ├── main.ts
+│   │       ├── app.module.ts
+│   │       └── tasks/
+│   │           ├── tasks.module.ts
+│   │           ├── tasks.controller.ts   # POST /tasks, GET /tasks/:id
+│   │           ├── tasks.service.ts
+│   │           └── dto/
+│   │               └── create-task.dto.ts
+│   └── worker/                 # BullMQ Worker
 │       └── src/
 │           ├── main.ts
-│           ├── app.module.ts
-│           └── tasks/
-│               ├── tasks.module.ts
-│               ├── tasks.controller.ts   # POST /tasks
-│               ├── tasks.service.ts
-│               └── dto/
-│                   └── create-task.dto.ts
+│           ├── worker.module.ts
+│           └── task.processor.ts         # Job processor
 ├── libs/
 │   └── queue/                  # BullMQ queue abstraction
 │       └── src/
@@ -70,18 +75,24 @@ cp .env.example .env
 
 Default values (`localhost:6379`) work with the Docker Compose setup.
 
-### 4. Run the API
+### 4. Run the API + Worker
 
 ```bash
-# Development (watch mode)
+# Terminal 1 — API (watch mode)
 npm run start:dev
 
-# Production build
-npm run build
-npm run start:prod
+# Terminal 2 — Worker (watch mode)
+npm run start:worker:dev
 ```
 
 The API starts on `http://localhost:3000`.
+
+### Task Status Flow
+
+```
+PENDING → ACTIVE → COMPLETED
+                 → FAILED
+```
 
 ## API
 
@@ -104,11 +115,29 @@ Response (`201 Created`):
 }
 ```
 
+### Get Task Status
+
+```bash
+curl http://localhost:3000/tasks/{id}
+```
+
+Response (`200 OK`):
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "COMPLETED",
+  "payload": { "prompt": "hello world" },
+  "createdAt": "2026-04-06T08:00:00.000Z"
+}
+```
+
 ## Scripts
 
 | Command | Description |
 |---|---|
 | `npm run start:dev` | Start API in watch mode |
+| `npm run start:worker:dev` | Start Worker in watch mode |
 | `npm run build` | Build the project |
 | `npm run start:prod` | Run production build |
 | `npm test` | Run unit tests |

@@ -48,23 +48,23 @@
 | W3 | SLA 與超時管理 | ✅ | TASK_TIMEOUT_MS 硬性超時、Promise.race timeout wrapper、task_timeout_total metric |
 | W4 | 影片 #1 + 總結 | ✅ | 專案完成後製作 |
 
-### 7月：AI Routing & Cost（待開始）
+### 7月：AI Routing & Cost — 接入真實 LLM API
 
-| 週 | 主題 | 狀態 |
-|---|---|---|
-| W1 | Cost Model 與模型庫 | ⏳ |
-| W2 | 智慧路由 (Decision Engine) | ⏳ |
-| W3 | Token Bucket 限流 | ⏳ |
-| W4 | 文章 #3 + 總結 | ⏳ |
+| 週 | 主題 | 狀態 | 計畫內容 |
+|---|---|---|---|
+| W1 | Cost Model 與模型庫 | ⏳ | `libs/cost-governor`、ModelRegistry（Anthropic Claude + OpenAI GPT）、真實 API 呼叫、Token 消耗記錄 |
+| W2 | 智慧路由 (Decision Engine) | ⏳ | `libs/router`、taskType 標籤路由（simple→Haiku, code→Sonnet, complex→Opus）、ADR-005 |
+| W3 | Token Bucket 限流 | ⏳ | Redis Token Bucket per-provider、RPM/TPM 限流、限流觸發延遲 re-queue |
+| W4 | 文章 #3 + 總結 | ⏳ | 《探討 AI 基礎設施成本控制》 |
 
-### 8月：工作流與 Chaos（待開始）
+### 8月：工作流與 Chaos — 使用 Bull Board
 
-| 週 | 主題 | 狀態 |
-|---|---|---|
-| W1 | 線性任務鏈 (Sequential Chain) | ⏳ |
-| W2 | 靜態 DAG 依賴檢查 | ⏳ |
-| W3 | 可視化看板 (Dashboard) | ⏳ |
-| W4 | Chaos Testing + 文章 #5 | ⏳ |
+| 週 | 主題 | 狀態 | 計畫內容 |
+|---|---|---|---|
+| W1 | 線性任務鏈 (Sequential Chain) | ⏳ | BullMQ Flow parent-child、POST /workflows/chain、A output → B input |
+| W2 | 靜態 DAG 依賴檢查 | ⏳ | `libs/workflow`、拓撲排序、POST /workflows/dag、菱形依賴並行執行、ADR-006 |
+| W3 | Bull Board 可視化看板 | ⏳ | `@bull-board/nestjs`、自動掃描用戶佇列、/admin/queues |
+| W4 | Chaos Testing + 文章 #5 | ⏳ | 故障注入腳本（Worker crash, Redis 斷線）、系統韌性報告 |
 
 ### 9月：品牌化與結案（待開始）
 

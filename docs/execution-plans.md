@@ -131,31 +131,60 @@
 
 #### 📅 7月：AI Routing & Cost (Intelligence)
 
+> **核心決策：** 接入真實 LLM API（Anthropic Claude + OpenAI GPT），非模擬。
+
 ##### W1：Cost Model 與模型庫
 | 類型 | 內容 |
 |------|------|
-| 一四五 (開發) | 建立模型計費表 (Token/Price)；實作基礎 Token 計費統計 |
-| 六 (壓力測試) | 測試不同 LLM 模型請求下的 Token 計算準確度 |
-| 日 (總結) | 紀錄成本模型設計決策 |
+| 一四五 (開發) | 新增 `libs/cost-governor` 模組；建立模型註冊表（ModelRegistry）定義各模型 ID、Provider、Token 單價（input/output）；整合 Anthropic SDK + OpenAI SDK，實作真實 LLM 呼叫 Service；Worker 處理 job 時呼叫真實 API 並記錄 token 消耗 |
+| 六 (壓力測試) | 測試不同模型的 Token 計算準確度；對照 Provider Dashboard 驗證計費一致性 |
+| 日 (總結) | 紀錄成本模型設計決策 (ADR-007) |
+
+**模型註冊表設計：**
+```typescript
+interface ModelDefinition {
+  id: string;              // e.g. 'claude-haiku-4-5', 'gpt-4o-mini'
+  provider: 'anthropic' | 'openai';
+  inputPricePerMToken: number;   // USD per 1M input tokens
+  outputPricePerMToken: number;  // USD per 1M output tokens
+  maxTokens: number;
+  tags: string[];          // e.g. ['fast', 'cheap'] or ['code', 'complex']
+}
+```
+
+**環境變數：**
+- `ANTHROPIC_API_KEY` — Anthropic API Key
+- `OPENAI_API_KEY` — OpenAI API Key
 
 ##### W2：智慧路由 (Decision Engine)
 | 類型 | 內容 |
 |------|------|
-| 一四五 (開發) | 根據標籤 (Code/Simple/Complex) 自動分流至對應模型 |
-| 六 (壓力測試) | 驗證路由邏輯的命中率與成本節省比例 |
-| 日 (總結) | 紀錄路由策略 ADR |
+| 一四五 (開發) | 新增 `libs/router` 模組；根據 task payload 中的 `taskType` 標籤自動選擇最適模型；路由規則：`simple` → Haiku/GPT-4o-mini（低成本）、`code` → Sonnet/GPT-4o（平衡）、`complex` → Opus/o3（高品質）；路由決策記錄在 job data 中供成本追蹤 |
+| 六 (壓力測試) | 驗證路由邏輯的命中率；對比不同路由策略下的成本差異 |
+| 日 (總結) | 紀錄路由策略 ADR-005 |
+
+**路由規則設計：**
+```
+taskType: 'simple'  → claude-haiku-4-5 / gpt-4o-mini    (最低成本)
+taskType: 'code'    → claude-sonnet-4-6 / gpt-4o         (平衡)
+taskType: 'complex' → claude-opus-4-6 / o3               (最高品質)
+```
 
 ##### W3：Token Bucket 限流 (Rate Limit)
 | 類型 | 內容 |
 |------|------|
-| 一四五 (開發) | 對外部 API 實作流量整流，避免觸發 Provider 的 429 限流 |
-| 六 (壓力測試) | 測試限流觸發後的排隊與重試行為 |
+| 一四五 (開發) | 實作 Redis Token Bucket 限流器（per-provider）；每個 Provider 獨立桶：Anthropic RPM/TPM、OpenAI RPM/TPM；限流觸發時 job 延遲處理（delay re-queue），不直接失敗 |
+| 六 (壓力測試) | 高併發呼叫測試，驗證限流桶是否平滑整流；觀察限流觸發後的排隊與恢復行為 |
 | 日 (總結) | 建立限流參數調優文件 |
 
-##### W4：Bonus 項目與總結
+**環境變數：**
+- `ANTHROPIC_RPM_LIMIT` — Anthropic Requests Per Minute（預設 50）
+- `OPENAI_RPM_LIMIT` — OpenAI Requests Per Minute（預設 60）
+
+##### W4：文章 #3 與總結
 | 類型 | 內容 |
 |------|------|
-| 一四五 (開發) | (Bonus) 探索 MCP 整合或開源貢獻；撰寫文章 #3 |
+| 一四五 (開發) | 撰寫文章 #3；整理 7 月 ADR |
 | 日 (總結) | 🚀 **發布文章 #3**：《探討 AI 基礎設施成本控制》 |
 
 ---
@@ -168,32 +197,62 @@
 
 #### 📅 8月：受限工作流與 Chaos (Resilience)
 
+> **核心決策：** Dashboard 採用 Bull Board（`@bull-board/nestjs`），不自建前端。
+
 ##### W1：線性任務鏈 (Sequential Chain)
 | 類型 | 內容 |
 |------|------|
-| 一四五 (開發) | 實作 Task A → Task B 數據注入（A 的輸出作為 B 的輸入） |
-| 六 (壓力測試) | 測試鏈結任務中單點失敗後的阻斷行為 |
+| 一四五 (開發) | 利用 BullMQ Flow（parent-child）實作 Task A → Task B 數據注入；A 的 output 自動作為 B 的 input；API 新增 `POST /workflows/chain` 接收任務鏈定義 `[{step, payload}]` |
+| 六 (壓力測試) | 測試鏈結任務中單點失敗後的阻斷行為；驗證 A 失敗時 B 不會被執行 |
 | 日 (總結) | 紀錄任務鏈設計模式 |
+
+**API 設計：**
+```json
+POST /workflows/chain
+{
+  "userId": "alice",
+  "steps": [
+    { "name": "summarize", "payload": { "text": "..." } },
+    { "name": "translate",  "payload": { "targetLang": "zh" } }
+  ]
+}
+```
+→ Step 1 完成後，output 注入 Step 2 的 input 自動執行
 
 ##### W2：靜態 DAG 依賴檢查
 | 類型 | 內容 |
 |------|------|
-| 一四五 (開發) | 實作拓撲排序 (Topological Sort) 檢查，避免循環依賴 |
-| 六 (壓力測試) | 測試複雜 DAG 下的並行執行正確性 |
-| 日 (總結) | 紀錄 DAG 演算法選型 ADR |
+| 一四五 (開發) | 新增 `libs/workflow` 模組；實作拓撲排序 (Topological Sort) 驗證 DAG 無循環依賴；API 新增 `POST /workflows/dag` 接收 DAG 定義；可並行的節點同時執行，有依賴的節點等待前置完成 |
+| 六 (壓力測試) | 測試複雜 DAG（菱形依賴、扇出扇入）的並行執行正確性 |
+| 日 (總結) | 紀錄 DAG 演算法選型 ADR-006 |
 
-##### W3：可視化看板 (Dashboard)
+**DAG 定義格式：**
+```json
+POST /workflows/dag
+{
+  "userId": "alice",
+  "nodes": [
+    { "id": "A", "payload": {...} },
+    { "id": "B", "payload": {...}, "dependsOn": ["A"] },
+    { "id": "C", "payload": {...}, "dependsOn": ["A"] },
+    { "id": "D", "payload": {...}, "dependsOn": ["B", "C"] }
+  ]
+}
+```
+→ A 先執行 → B、C 並行 → D 最後（扇出扇入）
+
+##### W3：Bull Board 可視化看板
 | 類型 | 內容 |
 |------|------|
-| 一四五 (開發) | 整合簡易 Dashboard，即時觀察任務流動狀態 |
+| 一四五 (開發) | 整合 `@bull-board/nestjs` + `@bull-board/api`；自動掃描所有用戶佇列 + DLQ 註冊至 Bull Board；暴露於 `/admin/queues` 路徑；支援即時查看佇列狀態、job 詳情、手動重試/刪除 |
 | 六 (壓力測試) | 驗證看板在高流量下的數據延遲與準確性 |
 | 日 (總結) | 撰寫文章 #4 草稿 |
 
 ##### W4：Chaos Testing (故障注入)
 | 類型 | 內容 |
 |------|------|
-| 一四五 (開發) | 實作故障腳本；撰寫文章 #5 系統終極回顧 |
-| 六 (壓力測試) | 🔥 **故障大演習**：隨機停掉 Worker，驗證系統自癒能力 |
+| 一四五 (開發) | 實作故障注入腳本（`tests/chaos/`）：隨機殺 Worker、Redis 斷線模擬、高延遲注入；撰寫文章 #5 系統終極回顧 |
+| 六 (壓力測試) | 🔥 **故障大演習**：隨機停掉 Worker → 驗證 stalled job 自動 re-queue；Redis 短暫斷線 → 驗證重連後系統恢復；同時執行背壓 + 超時 + DLQ 全流程 |
 | 日 (總結) | 🚀 **發布文章 #5**：《系統韌性報告》 |
 
 ---
@@ -263,14 +322,15 @@
 
 ## 五、架構決策索引 (ADR Index)
 
-| ADR | 標題 | 狀態 |
-|-----|------|------|
-| ADR-001 | 選用 NestJS + BullMQ 作為核心引擎 | ✅ Accepted | @docs/ADR-001-nestjs-bullmq-core-engine.md
-| ADR-002 | 冪等性實作策略 (Redis SETNX) | 🔄 Draft |
-| ADR-003 | 可觀測性技術棧 (Prometheus + Grafana) | 🔄 Draft |
-| ADR-004 | 公平調度演算法選型 | ⏳ Pending |
-| ADR-005 | AI 路由決策引擎設計 | ⏳ Pending |
-| ADR-006 | DAG 依賴拓撲排序策略 | ⏳ Pending |
+| ADR | 標題 | 狀態 | 預計月份 |
+|-----|------|------|------|
+| ADR-001 | 選用 NestJS + BullMQ 作為核心引擎 | ✅ Accepted | 4月 |
+| ADR-002 | 冪等性實作策略 (Redis SETNX) | 🔄 Draft | 5月 |
+| ADR-003 | 可觀測性技術棧 (Prometheus + Grafana) | 🔄 Draft | 5月 |
+| ADR-004 | 公平調度演算法選型 (Per-User Queues) | 🔄 Draft | 6月 |
+| ADR-005 | AI 路由決策引擎設計 (Cost-Effective Routing) | ⏳ Pending | 7月 |
+| ADR-006 | DAG 依賴拓撲排序策略 | ⏳ Pending | 8月 |
+| ADR-007 | 成本模型與模型註冊表設計 | ⏳ Pending | 7月 |
 
 ---
 
@@ -285,7 +345,9 @@ ai-task-orchestrator/
 │   ├── queue/                  # BullMQ 佇列抽象層
 │   ├── idempotency/            # 冪等性 middleware
 │   ├── observability/          # Metrics / Tracing / Logging
-│   └── cost-governor/          # AI 成本控管模組
+│   ├── cost-governor/          # AI 成本控管模組 (7月)
+│   ├── router/                 # AI 智慧路由引擎 (7月)
+│   └── workflow/               # DAG 工作流引擎 (8月)
 ├── docs/
 │   └── adr/                    # 架構決策紀錄
 ├── tests/
@@ -328,4 +390,4 @@ perf(cache): implement semantic cache for AI responses
 
 ---
 
-*最後更新：2026-04-06 | 版本：v0.2.0*
+*最後更新：2026-04-06 | 版本：v0.3.0*

@@ -13,7 +13,7 @@
 | **一：系統穩定與健壯期** | 4月 | 單機穩定系統 (Core Engine) | ✅ 完成 |
 | | 5月 | 可靠性與錯誤處理 (Engineering Depth) | ✅ 完成 |
 | **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | ✅ 完成 |
-| | 7月 | AI Routing & Cost (Intelligence) | 🔄 進行中 |
+| | 7月 | AI Routing & Cost (Intelligence) | ✅ 完成 |
 | **三：複雜場景與品牌包裝** | 8月 | 工作流與 Chaos (Resilience) | ⏳ 待開始 |
 | | 9月 | 品牌化與結案 (Portfolio Assets) | ⏳ 待開始 |
 
@@ -55,7 +55,7 @@
 | W1 | Cost Model 與模型庫 | ✅ | `libs/cost-governor`（ModelRegistry + LlmService + CostTracker）、Anthropic SDK + OpenAI SDK、真實 API 呼叫、cost/token Prometheus metrics |
 | W2 | 智慧路由 (Decision Engine) | ✅ | `libs/router`（RouterService）、TaskType enum (simple/code/complex)、ROUTING_TABLE 候選模型、provider 可用性檢查、task_routed_total metric |
 | W3 | Token Bucket 限流 | ✅ | RateLimiterService (Redis Lua script)、per-provider RPM 限流、waitForToken 等待機制、task_rate_limited_total metric |
-| W4 | 文章 #3 + 總結 | ⏳ | 《探討 AI 基礎設施成本控制》 |
+| W4 | 文章 #3 + 總結 | ✅ | 文章 #3《探討 AI 基礎設施成本控制》 |
 
 ### 8月：工作流與 Chaos — 使用 Bull Board
 
@@ -209,7 +209,7 @@ docker/
 
 | 類型 | 進度 | 清單 |
 |---|---|---|
-| 技術文章 | 2/5 | ✅ #1 背壓設計、✅ #2 重試與冪等、⏳ #3 成本控制、⏳ #4 DAG 工作流、⏳ #5 韌性報告 |
+| 技術文章 | 3/5 | ✅ #1 背壓設計、✅ #2 重試與冪等、✅ #3 成本控制、⏳ #4 DAG 工作流、⏳ #5 韌性報告 |
 | 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo |
 | ADR | 1/5+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002 冪等性、⏳ ADR-003 可觀測性、⏳ ADR-004 公平調度、⏳ ADR-005 AI 路由 |
 | 電子書 | 0/1 | ⏳《Building Scalable AI Agent Infrastructure》 |

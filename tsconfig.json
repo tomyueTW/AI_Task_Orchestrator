@@ -23,7 +23,9 @@
       "@app/observability": ["libs/observability/src"],
       "@app/observability/*": ["libs/observability/src/*"],
       "@app/cost-governor": ["libs/cost-governor/src"],
-      "@app/cost-governor/*": ["libs/cost-governor/src/*"]
+      "@app/cost-governor/*": ["libs/cost-governor/src/*"],
+      "@app/router": ["libs/router/src"],
+      "@app/router/*": ["libs/router/src/*"]
     }
   }
 }

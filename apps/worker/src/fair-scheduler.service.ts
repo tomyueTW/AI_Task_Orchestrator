@@ -7,6 +7,7 @@ import { TASK_QUEUE_PREFIX, TASK_DLQ } from '@app/queue';
 import { REDIS_CONNECTION, RedisConnectionConfig } from '@app/queue/queue.module';
 import { MetricsService } from '@app/observability';
 import { LlmService, CostTrackerService } from '@app/cost-governor';
+import { RouterService } from '@app/router';
 
 @Injectable()
 export class FairScheduler implements OnModuleInit, OnModuleDestroy {
@@ -24,6 +25,7 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
     private readonly metrics: MetricsService,
     private readonly llm: LlmService,
     private readonly costTracker: CostTrackerService,
+    private readonly router: RouterService,
     @InjectQueue(TASK_DLQ) private readonly dlqQueue: Queue,
   ) {
     this.redis = new Redis(redisConfig);
@@ -135,7 +137,8 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
     }
 
     const { payload } = job.data;
-    const modelId = job.data.model ?? this.llm.registry.getDefaultModel().id;
+    const modelId = this.router.resolve(job.data.model, job.data.taskType);
+    this.metrics.taskRouted.inc({ taskType: job.data.taskType ?? 'none', model: modelId });
     const prompt = (payload.prompt as string) ?? JSON.stringify(payload);
 
     // Hard timeout wrapper

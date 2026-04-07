@@ -18,6 +18,7 @@ export class MetricsService {
   readonly taskTimeout: Counter;
   readonly taskCostUsd: Counter;
   readonly taskTokens: Counter;
+  readonly taskRouted: Counter;
   readonly queueDepth: Gauge;
 
   constructor() {
@@ -66,6 +67,13 @@ export class MetricsService {
       name: 'task_tokens_total',
       help: 'Total tokens consumed',
       labelNames: ['direction'] as const,
+      registers: [this.registry],
+    });
+
+    this.taskRouted = new Counter({
+      name: 'task_routed_total',
+      help: 'Total routing decisions by taskType and model',
+      labelNames: ['taskType', 'model'] as const,
       registers: [this.registry],
     });
 

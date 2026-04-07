@@ -53,7 +53,7 @@
 | 週 | 主題 | 狀態 | 計畫內容 |
 |---|---|---|---|
 | W1 | Cost Model 與模型庫 | ✅ | `libs/cost-governor`（ModelRegistry + LlmService + CostTracker）、Anthropic SDK + OpenAI SDK、真實 API 呼叫、cost/token Prometheus metrics |
-| W2 | 智慧路由 (Decision Engine) | ⏳ | `libs/router`、taskType 標籤路由（simple→Haiku, code→Sonnet, complex→Opus）、ADR-005 |
+| W2 | 智慧路由 (Decision Engine) | ✅ | `libs/router`（RouterService）、TaskType enum (simple/code/complex)、ROUTING_TABLE 候選模型、provider 可用性檢查、task_routed_total metric |
 | W3 | Token Bucket 限流 | ⏳ | Redis Token Bucket per-provider、RPM/TPM 限流、限流觸發延遲 re-queue |
 | W4 | 文章 #3 + 總結 | ⏳ | 《探討 AI 基礎設施成本控制》 |
 
@@ -164,6 +164,7 @@ docker/
 | 真實 LLM 呼叫 | Anthropic SDK + OpenAI SDK 統一介面 | 7月 W1 |
 | 成本追蹤 | ModelRegistry 計費表 + CostTracker + task_cost_usd_total metric | 7月 W1 |
 | 本地 LLM | Ollama + Llama 3.2 (免費本地推理, OpenAI 相容 API) | 7月 W1 |
+| 智慧路由 | RouterService — taskType→model 自動路由 + provider 可用性檢查 | 7月 W2 |
 
 ---
 

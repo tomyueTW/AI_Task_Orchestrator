@@ -19,6 +19,12 @@ export const PRIORITY_MAP: Record<TaskPriority, number> = {
   [TaskPriority.LOW]: 4,
 };
 
+export enum TaskType {
+  SIMPLE = 'simple',
+  CODE = 'code',
+  COMPLEX = 'complex',
+}
+
 export interface TokenUsage {
   input: number;
   output: number;
@@ -29,6 +35,7 @@ export interface Task {
   userId: string;
   priority: TaskPriority;
   status: TaskStatus;
+  taskType?: TaskType;
   model?: string;
   tokenUsage?: TokenUsage;
   cost?: number;

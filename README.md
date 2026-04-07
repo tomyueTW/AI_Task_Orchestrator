@@ -128,7 +128,7 @@ Available models:
 - **Anthropic:** `claude-haiku-4-5-20251001`, `claude-sonnet-4-6-20250514`
 - **OpenAI:** `gpt-4o-mini`, `gpt-4o`
 
-Default model is `llama3.2` (local, free). Set `OLLAMA_HOST` if Ollama runs on a different host.
+Use `taskType` for automatic routing: `simple` (cheapest), `code` (balanced), `complex` (highest quality). Or specify `model` directly to override. Default: `llama3.2`.
 
 ### SLA Timeout
 

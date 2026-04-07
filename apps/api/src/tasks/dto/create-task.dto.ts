@@ -1,5 +1,5 @@
 import { IsEnum, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
-import { TaskPriority } from '@app/queue';
+import { TaskPriority, TaskType } from '@app/queue';
 
 export class CreateTaskDto {
   @IsNotEmpty()
@@ -9,6 +9,10 @@ export class CreateTaskDto {
   @IsOptional()
   @IsEnum(TaskPriority)
   priority?: TaskPriority;
+
+  @IsOptional()
+  @IsEnum(TaskType)
+  taskType?: TaskType;
 
   @IsOptional()
   @IsString()

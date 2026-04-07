@@ -62,6 +62,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/cost-governor/tsconfig.lib.json"
       }
+    },
+    "router": {
+      "type": "library",
+      "root": "libs/router",
+      "entryFile": "index",
+      "sourceRoot": "libs/router/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/router/tsconfig.lib.json"
+      }
     }
   }
 }

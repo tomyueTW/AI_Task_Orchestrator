@@ -130,6 +130,10 @@ Available models:
 
 Use `taskType` for automatic routing: `simple` (cheapest), `code` (balanced), `complex` (highest quality). Or specify `model` directly to override. Default: `llama3.2`.
 
+### Rate Limiting (Token Bucket)
+
+Per-provider rate limiting via Redis Token Bucket prevents exceeding LLM API quotas. Set `ANTHROPIC_RPM_LIMIT`, `OPENAI_RPM_LIMIT`, `OLLAMA_RPM_LIMIT`. When tokens are exhausted, jobs wait (not fail) until tokens refill.
+
 ### SLA Timeout
 
 Jobs that exceed `TASK_TIMEOUT_MS` (default 30s) are automatically terminated and retried. Timeout violations are tracked via `task_timeout_total` Prometheus metric.

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { ModelRegistry } from './model-registry';
+import { RateLimiterService } from './rate-limiter.service';
 
 export interface LlmResponse {
   content: string;
@@ -19,7 +20,10 @@ export class LlmService {
   private readonly ollama: OpenAI;
   readonly registry = new ModelRegistry();
 
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly rateLimiter: RateLimiterService,
+  ) {
     const anthropicKey = config.get<string>('ANTHROPIC_API_KEY');
     const openaiKey = config.get<string>('OPENAI_API_KEY');
     const ollamaHost = config.get<string>('OLLAMA_HOST', 'http://localhost:11434');
@@ -38,6 +42,9 @@ export class LlmService {
     if (!model) {
       throw new Error(`Unknown model: ${modelId}`);
     }
+
+    // Wait for rate limit token before calling provider
+    await this.rateLimiter.waitForToken(model.provider);
 
     switch (model.provider) {
       case 'anthropic':

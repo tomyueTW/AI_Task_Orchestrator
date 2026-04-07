@@ -19,6 +19,7 @@ export class MetricsService {
   readonly taskCostUsd: Counter;
   readonly taskTokens: Counter;
   readonly taskRouted: Counter;
+  readonly taskRateLimited: Counter;
   readonly queueDepth: Gauge;
 
   constructor() {
@@ -74,6 +75,13 @@ export class MetricsService {
       name: 'task_routed_total',
       help: 'Total routing decisions by taskType and model',
       labelNames: ['taskType', 'model'] as const,
+      registers: [this.registry],
+    });
+
+    this.taskRateLimited = new Counter({
+      name: 'task_rate_limited_total',
+      help: 'Total rate limit waits by provider',
+      labelNames: ['provider'] as const,
       registers: [this.registry],
     });
 

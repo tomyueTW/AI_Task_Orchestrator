@@ -54,7 +54,7 @@
 |---|---|---|---|
 | W1 | Cost Model 與模型庫 | ✅ | `libs/cost-governor`（ModelRegistry + LlmService + CostTracker）、Anthropic SDK + OpenAI SDK、真實 API 呼叫、cost/token Prometheus metrics |
 | W2 | 智慧路由 (Decision Engine) | ✅ | `libs/router`（RouterService）、TaskType enum (simple/code/complex)、ROUTING_TABLE 候選模型、provider 可用性檢查、task_routed_total metric |
-| W3 | Token Bucket 限流 | ⏳ | Redis Token Bucket per-provider、RPM/TPM 限流、限流觸發延遲 re-queue |
+| W3 | Token Bucket 限流 | ✅ | RateLimiterService (Redis Lua script)、per-provider RPM 限流、waitForToken 等待機制、task_rate_limited_total metric |
 | W4 | 文章 #3 + 總結 | ⏳ | 《探討 AI 基礎設施成本控制》 |
 
 ### 8月：工作流與 Chaos — 使用 Bull Board
@@ -165,6 +165,7 @@ docker/
 | 成本追蹤 | ModelRegistry 計費表 + CostTracker + task_cost_usd_total metric | 7月 W1 |
 | 本地 LLM | Ollama + Llama 3.2 (免費本地推理, OpenAI 相容 API) | 7月 W1 |
 | 智慧路由 | RouterService — taskType→model 自動路由 + provider 可用性檢查 | 7月 W2 |
+| Provider 限流 | Redis Token Bucket per-provider RPM 限流（等待不失敗） | 7月 W3 |
 
 ---
 
@@ -183,6 +184,9 @@ docker/
 | `ANTHROPIC_API_KEY` | — | Anthropic API Key | 7月 W1 |
 | `OPENAI_API_KEY` | — | OpenAI API Key | 7月 W1 |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama 本地 API | 7月 W1 |
+| `ANTHROPIC_RPM_LIMIT` | `50` | Anthropic RPM 限流 | 7月 W3 |
+| `OPENAI_RPM_LIMIT` | `60` | OpenAI RPM 限流 | 7月 W3 |
+| `OLLAMA_RPM_LIMIT` | `999` | Ollama RPM 限流 | 7月 W3 |
 
 ---
 

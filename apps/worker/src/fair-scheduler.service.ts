@@ -3,17 +3,27 @@ import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Worker, Job, Queue } from 'bullmq';
 import Redis from 'ioredis';
-import { TASK_QUEUE_PREFIX, TASK_DLQ } from '@app/queue';
+import { v4 as uuidv4 } from 'uuid';
+import {
+  TASK_QUEUE_PREFIX,
+  TASK_DLQ,
+  TaskPriority,
+  PRIORITY_MAP,
+  getUserQueueName,
+} from '@app/queue';
 import { REDIS_CONNECTION, RedisConnectionConfig } from '@app/queue/queue.module';
 import { MetricsService } from '@app/observability';
 import { LlmService, CostTrackerService } from '@app/cost-governor';
 import { RouterService } from '@app/router';
+import { DagCoordinator } from '@app/workflow';
 
 @Injectable()
 export class FairScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(FairScheduler.name);
   private readonly workers = new Map<string, Worker>();
+  private readonly enqueueQueues = new Map<string, Queue>();
   private readonly redis: Redis;
+  private readonly dagCoordinator: DagCoordinator;
   private readonly perUserConcurrency: number;
   private readonly failureRate: number;
   private readonly timeoutMs: number;
@@ -29,6 +39,7 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
     @InjectQueue(TASK_DLQ) private readonly dlqQueue: Queue,
   ) {
     this.redis = new Redis(redisConfig);
+    this.dagCoordinator = new DagCoordinator(this.redis);
     this.perUserConcurrency = parseInt(
       config.get('MAX_CONCURRENCY_PER_USER', '1'),
       10,
@@ -54,9 +65,18 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
 
     this.logger.log('FairScheduler shutting down — closing all workers...');
     const closePromises = Array.from(this.workers.values()).map((w) => w.close());
-    await Promise.all(closePromises);
+    const enqueuePromises = Array.from(this.enqueueQueues.values()).map((q) => q.close());
+    await Promise.all([...closePromises, ...enqueuePromises]);
     await this.redis.quit();
     this.logger.log('FairScheduler closed gracefully');
+  }
+
+  private getEnqueueQueue(userId: string): Queue {
+    const existing = this.enqueueQueues.get(userId);
+    if (existing) return existing;
+    const queue = new Queue(getUserQueueName(userId), { connection: this.redisConfig });
+    this.enqueueQueues.set(userId, queue);
+    return queue;
   }
 
   private async discoverQueues() {
@@ -85,9 +105,10 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
       },
     );
 
-    worker.on('completed', (job: Job) => {
+    worker.on('completed', async (job: Job, result: unknown) => {
       this.metrics.taskCompleted.inc();
       this.logger.log(`[${queueName}] Job ${job.id} completed`);
+      await this.onDagNodeCompleted(job, result);
     });
 
     worker.on('failed', async (job: Job | undefined, error: Error) => {
@@ -111,6 +132,18 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
           failedReason: error.message,
           failedAt: new Date().toISOString(),
         });
+
+        // DAG: mark the node as failed; downstream nodes will never fire (pendingDeps never reaches 0)
+        if (job.data.dagId && job.data.dagNodeId) {
+          await this.dagCoordinator.markFailed(
+            job.data.dagId,
+            job.data.dagNodeId,
+            error.message,
+          );
+          this.logger.warn(
+            `DAG ${job.data.dagId} node ${job.data.dagNodeId} failed — downstream blocked`,
+          );
+        }
       } else {
         this.logger.warn(
           `[${queueName}] Job ${job.id} failed (attempt ${job.attemptsMade}/${maxAttempts}): ${error.message}`,
@@ -152,6 +185,20 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    // DAG: inject upstream node results into payload.dependencies
+    if (job.data.dagId && job.data.dagNodeId) {
+      await this.dagCoordinator.markActive(job.data.dagId, job.data.dagNodeId);
+      const node = await this.dagCoordinator.getNode(job.data.dagId, job.data.dagNodeId);
+      const depIds = node?.dependsOn ?? [];
+      if (depIds.length > 0) {
+        const dependencies = await this.dagCoordinator.getResults(job.data.dagId, depIds);
+        effectivePayload = { ...effectivePayload, dependencies };
+        this.logger.log(
+          `DAG node ${job.data.dagNodeId} received ${depIds.length} upstream result(s)`,
+        );
+      }
+    }
+
     const prompt = (effectivePayload.prompt as string) ?? JSON.stringify(effectivePayload);
 
     // Hard timeout wrapper
@@ -187,5 +234,52 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
       cost: costRecord.costUsd,
       processedAt: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Called after a job successfully completes. If the job belongs to a DAG,
+   * decrement pendingDeps on its downstream nodes and enqueue any that are now ready.
+   */
+  private async onDagNodeCompleted(job: Job, result: unknown): Promise<void> {
+    const { dagId, dagNodeId, userId, priority } = job.data;
+    if (!dagId || !dagNodeId) return;
+
+    const readyNodes = await this.dagCoordinator.markCompleteAndFindReady(
+      dagId,
+      dagNodeId,
+      result,
+    );
+    if (readyNodes.length === 0) return;
+
+    const taskPriority = (priority as TaskPriority) ?? TaskPriority.NORMAL;
+    const queue = this.getEnqueueQueue(userId);
+
+    for (const node of readyNodes) {
+      const jobId = uuidv4();
+      await this.dagCoordinator.setJobId(dagId, node.id, jobId);
+      await queue.add(
+        'process',
+        {
+          id: jobId,
+          userId,
+          priority: taskPriority,
+          taskType: node.taskType,
+          model: node.model,
+          payload: node.payload,
+          createdAt: new Date().toISOString(),
+          dagId,
+          dagNodeId: node.id,
+        },
+        {
+          jobId,
+          priority: PRIORITY_MAP[taskPriority],
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 1000 },
+          removeOnComplete: { count: 1000 },
+          removeOnFail: { count: 5000 },
+        },
+      );
+      this.logger.log(`DAG ${dagId} enqueued downstream node ${node.id} as job ${jobId}`);
+    }
   }
 }

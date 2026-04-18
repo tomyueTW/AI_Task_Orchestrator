@@ -1,6 +1,6 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.5.0
+> **版本：** v0.6.0
 > **最後更新：** 2026-04-18
 > **計畫週期：** 2026年4月 ─ 9月
 
@@ -62,7 +62,7 @@
 | 週 | 主題 | 狀態 | 計畫內容 |
 |---|---|---|---|
 | W1 | 線性任務鏈 (Sequential Chain) | ✅ | `apps/api/src/workflows`（WorkflowsService + FlowProducer）、POST /workflows/chain、GET /workflows/:id、前一步 output 自動注入 `payload.previousResult`、workflow meta 存 Redis (TTL 7d) |
-| W2 | 靜態 DAG 依賴檢查 | ⏳ | `libs/workflow`、拓撲排序、POST /workflows/dag、菱形依賴並行執行、ADR-006 |
+| W2 | 靜態 DAG 依賴檢查 | ✅ | `libs/workflow`（Kahn's topological sort + DagCoordinator）、POST /workflows/dag、GET /workflows/dag/:id、Redis 原子計數器驅動運行時、菱形依賴/扇出扇入/失敗阻斷、ADR-006 |
 | W3 | Bull Board 可視化看板 | ⏳ | `@bull-board/nestjs`、自動掃描用戶佇列、/admin/queues |
 | W4 | Chaos Testing + 文章 #5 | ⏳ | 故障注入腳本（Worker crash, Redis 斷線）、系統韌性報告 |
 
@@ -93,9 +93,11 @@ apps/
 │   │   └── interceptors/idempotency.interceptor.ts
 │   ├── workflows/
 │   │   ├── workflows.module.ts
-│   │   ├── workflows.controller.ts    # POST /workflows/chain, GET /workflows/:id
-│   │   ├── workflows.service.ts       # FlowProducer + Redis meta storage
-│   │   └── dto/create-chain.dto.ts    # userId, priority, steps[]
+│   │   ├── workflows.controller.ts    # POST /workflows/chain|dag, GET /workflows/:id|dag/:id
+│   │   ├── workflows.service.ts       # FlowProducer (chain) + DagCoordinator (dag)
+│   │   └── dto/
+│   │       ├── create-chain.dto.ts    # userId, priority, steps[]
+│   │       └── create-dag.dto.ts      # userId, priority, nodes[{id, dependsOn, payload}]
 │   └── metrics/
 │       ├── metrics.controller.ts      # GET /metrics
 │       └── metrics.module.ts
@@ -117,11 +119,16 @@ libs/
 │   ├── metrics.service.ts             # 9 metrics (duration, completed, failed, dlq, timeout, cost, tokens, queue depth)
 │   ├── observability.module.ts
 │   └── index.ts
-└── cost-governor/src/                 # AI 成本控管 (5 files)
-    ├── model-registry.ts              # 5 模型定義 (Haiku, Sonnet, GPT-4o-mini, GPT-4o, Llama3.2)
-    ├── llm.service.ts                 # Anthropic + OpenAI + Ollama 統一介面
-    ├── cost-tracker.service.ts        # Token/Cost 計算
-    ├── cost-governor.module.ts
+├── cost-governor/src/                 # AI 成本控管 (5 files)
+│   ├── model-registry.ts              # 5 模型定義 (Haiku, Sonnet, GPT-4o-mini, GPT-4o, Llama3.2)
+│   ├── llm.service.ts                 # Anthropic + OpenAI + Ollama 統一介面
+│   ├── cost-tracker.service.ts        # Token/Cost 計算
+│   ├── cost-governor.module.ts
+│   └── index.ts
+└── workflow/src/                      # DAG 工作流 (4 files)
+    ├── dag.interface.ts               # DagNodeInput, DagMeta
+    ├── topological-sort.ts            # Kahn's algorithm + 環/重複/自環檢查
+    ├── dag-coordinator.ts             # Redis 原子計數器 + 下游就緒判定
     └── index.ts
 
 docker/
@@ -146,6 +153,8 @@ docker/
 | `POST` | `/tasks/dlq/:id/retry` | 恢復 DLQ 任務 | 5月 W2 |
 | `POST` | `/workflows/chain` | 建立線性任務鏈（steps[]，前一步 output 自動注入下一步 payload.previousResult） | 8月 W1 |
 | `GET` | `/workflows/:id` | 查詢工作流狀態（所有 step job 狀態 + 結果） | 8月 W1 |
+| `POST` | `/workflows/dag` | 建立 DAG 工作流（nodes[{id, dependsOn, payload}]，拓撲排序驗證 + 並行執行 + 結果注入 payload.dependencies） | 8月 W2 |
+| `GET` | `/workflows/dag/:id` | 查詢 DAG 狀態（layers, 各 node status/result/failedReason） | 8月 W2 |
 | `GET` | `/metrics` | Prometheus 指標（API） | 5月 W3 |
 | `GET` | `:9091/` | Prometheus 指標（Worker） | 5月 W3 |
 
@@ -174,6 +183,8 @@ docker/
 | 智慧路由 | RouterService — taskType→model 自動路由 + provider 可用性檢查 | 7月 W2 |
 | Provider 限流 | Redis Token Bucket per-provider RPM 限流（等待不失敗） | 7月 W3 |
 | 線性任務鏈 | BullMQ FlowProducer parent-child、前一步 output 經 `job.getChildrenValues()` 注入下一步 `payload.previousResult` | 8月 W1 |
+| DAG 工作流 | Kahn's 拓撲排序驗證 + Redis 原子計數器 (`DECR deps-remaining`) 驅動並行入佇列、upstream 結果注入 `payload.dependencies` | 8月 W2 |
+| DAG 失敗阻斷 | 節點失敗標記 `status=failed`，下游 `deps-remaining` 永不歸零，自然停止傳播 | 8月 W2 |
 
 ---
 
@@ -219,7 +230,7 @@ docker/
 |---|---|---|
 | 技術文章 | 3/5 | ✅ #1 背壓設計、✅ #2 重試與冪等、✅ #3 成本控制、⏳ #4 DAG 工作流、⏳ #5 韌性報告 |
 | 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo |
-| ADR | 1/5+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002 冪等性、⏳ ADR-003 可觀測性、⏳ ADR-004 公平調度、⏳ ADR-005 AI 路由 |
+| ADR | 2/5+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002 冪等性、⏳ ADR-003 可觀測性、⏳ ADR-004 公平調度、⏳ ADR-005 AI 路由、✅ ADR-006 DAG 拓撲排序 |
 | 電子書 | 0/1 | ⏳《Building Scalable AI Agent Infrastructure》 |
 | 技術白皮書 | 0/1 | ⏳ "How we scaled to 10k TPS" |
 
@@ -245,4 +256,4 @@ docker/
 
 ---
 
-*最後更新：2026-04-18 | 版本：v0.5.0*
+*最後更新：2026-04-18 | 版本：v0.6.0*

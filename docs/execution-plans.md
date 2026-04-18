@@ -329,7 +329,7 @@ POST /workflows/dag
 | ADR-003 | 可觀測性技術棧 (Prometheus + Grafana) | 🔄 Draft | 5月 |
 | ADR-004 | 公平調度演算法選型 (Per-User Queues) | 🔄 Draft | 6月 |
 | ADR-005 | AI 路由決策引擎設計 (Cost-Effective Routing) | ⏳ Pending | 7月 |
-| ADR-006 | DAG 依賴拓撲排序策略 | ⏳ Pending | 8月 |
+| ADR-006 | DAG 依賴拓撲排序策略 | ✅ Accepted | 8月 |
 | ADR-007 | 成本模型與模型註冊表設計 | ⏳ Pending | 7月 |
 
 ---
@@ -390,4 +390,4 @@ perf(cache): implement semantic cache for AI responses
 
 ---
 
-*最後更新：2026-04-18 | 版本：v0.4.0*
+*最後更新：2026-04-18 | 版本：v0.5.0*

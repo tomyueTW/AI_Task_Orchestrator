@@ -1,6 +1,6 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.7.0
+> **版本：** v0.8.0
 > **最後更新：** 2026-04-18
 > **計畫週期：** 2026年4月 ─ 9月
 
@@ -14,7 +14,7 @@
 | | 5月 | 可靠性與錯誤處理 (Engineering Depth) | ✅ 完成 |
 | **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | ✅ 完成 |
 | | 7月 | AI Routing & Cost (Intelligence) | ✅ 完成 |
-| **三：複雜場景與品牌包裝** | 8月 | 工作流與 Chaos (Resilience) | 🔄 進行中 |
+| **三：複雜場景與品牌包裝** | 8月 | 工作流與 Chaos (Resilience) | ✅ 完成 |
 | | 9月 | 品牌化與結案 (Portfolio Assets) | ⏳ 待開始 |
 
 ---
@@ -64,7 +64,7 @@
 | W1 | 線性任務鏈 (Sequential Chain) | ✅ | `apps/api/src/workflows`（WorkflowsService + FlowProducer）、POST /workflows/chain、GET /workflows/:id、前一步 output 自動注入 `payload.previousResult`、workflow meta 存 Redis (TTL 7d) |
 | W2 | 靜態 DAG 依賴檢查 | ✅ | `libs/workflow`（Kahn's topological sort + DagCoordinator）、POST /workflows/dag、GET /workflows/dag/:id、Redis 原子計數器驅動運行時、菱形依賴/扇出扇入/失敗阻斷、ADR-006 |
 | W3 | Bull Board 可視化看板 | ✅ | `@bull-board/api` + `@bull-board/express`、`apps/api/src/admin` AdminService、啟動時透過 HttpAdapterHost 掛載於 `/admin/queues`、每 5s 掃描 Redis `bull:tasks-user-*:meta` 自動註冊新用戶佇列 + DLQ |
-| W4 | Chaos Testing + 文章 #5 | ⏳ | 故障注入腳本（Worker crash, Redis 斷線）、系統韌性報告 |
+| W4 | Chaos Testing + 文章 #5 | ✅ | `tests/chaos/` 5 腳本（load-generator、kill-worker、redis-chaos、latency-injection、soak）、文章 #5《系統韌性報告》 |
 
 ### 9月：品牌化與結案（待開始）
 
@@ -190,6 +190,7 @@ docker/
 | DAG 工作流 | Kahn's 拓撲排序驗證 + Redis 原子計數器 (`DECR deps-remaining`) 驅動並行入佇列、upstream 結果注入 `payload.dependencies` | 8月 W2 |
 | DAG 失敗阻斷 | 節點失敗標記 `status=failed`，下游 `deps-remaining` 永不歸零，自然停止傳播 | 8月 W2 |
 | 佇列可視化 | Bull Board mounted via HttpAdapterHost + periodic Redis scan 動態註冊新用戶佇列 | 8月 W3 |
+| 故障注入測試 | `tests/chaos/`：load-generator、kill-worker (SIGKILL)、redis-chaos (docker pause)、latency-injection、soak (12h 綜合) | 8月 W4 |
 
 ---
 
@@ -234,7 +235,7 @@ docker/
 
 | 類型 | 進度 | 清單 |
 |---|---|---|
-| 技術文章 | 3/5 | ✅ #1 背壓設計、✅ #2 重試與冪等、✅ #3 成本控制、⏳ #4 DAG 工作流、⏳ #5 韌性報告 |
+| 技術文章 | 4/5 | ✅ #1 背壓設計、✅ #2 重試與冪等、✅ #3 成本控制、⏳ #4 DAG 工作流、✅ #5 韌性報告 |
 | 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo |
 | ADR | 2/5+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002 冪等性、⏳ ADR-003 可觀測性、⏳ ADR-004 公平調度、⏳ ADR-005 AI 路由、✅ ADR-006 DAG 拓撲排序 |
 | 電子書 | 0/1 | ⏳《Building Scalable AI Agent Infrastructure》 |
@@ -264,4 +265,4 @@ docker/
 
 ---
 
-*最後更新：2026-04-18 | 版本：v0.7.0*
+*最後更新：2026-04-18 | 版本：v0.8.0*

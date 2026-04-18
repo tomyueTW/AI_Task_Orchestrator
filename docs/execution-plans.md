@@ -390,4 +390,4 @@ perf(cache): implement semantic cache for AI responses
 
 ---
 
-*最後更新：2026-04-06 | 版本：v0.3.0*
+*最後更新：2026-04-18 | 版本：v0.4.0*

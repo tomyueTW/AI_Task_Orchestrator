@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ObservabilityModule } from '@app/observability';
 import { TasksModule } from './tasks/tasks.module';
+import { WorkflowsModule } from './workflows/workflows.module';
 import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
@@ -12,6 +13,7 @@ import { MetricsModule } from './metrics/metrics.module';
     }),
     ObservabilityModule,
     TasksModule,
+    WorkflowsModule,
     MetricsModule,
   ],
 })

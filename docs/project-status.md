@@ -1,7 +1,7 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.4.0
-> **最後更新：** 2026-04-06
+> **版本：** v0.5.0
+> **最後更新：** 2026-04-18
 > **計畫週期：** 2026年4月 ─ 9月
 
 ---
@@ -14,7 +14,7 @@
 | | 5月 | 可靠性與錯誤處理 (Engineering Depth) | ✅ 完成 |
 | **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | ✅ 完成 |
 | | 7月 | AI Routing & Cost (Intelligence) | ✅ 完成 |
-| **三：複雜場景與品牌包裝** | 8月 | 工作流與 Chaos (Resilience) | ⏳ 待開始 |
+| **三：複雜場景與品牌包裝** | 8月 | 工作流與 Chaos (Resilience) | 🔄 進行中 |
 | | 9月 | 品牌化與結案 (Portfolio Assets) | ⏳ 待開始 |
 
 ---
@@ -61,7 +61,7 @@
 
 | 週 | 主題 | 狀態 | 計畫內容 |
 |---|---|---|---|
-| W1 | 線性任務鏈 (Sequential Chain) | ⏳ | BullMQ Flow parent-child、POST /workflows/chain、A output → B input |
+| W1 | 線性任務鏈 (Sequential Chain) | ✅ | `apps/api/src/workflows`（WorkflowsService + FlowProducer）、POST /workflows/chain、GET /workflows/:id、前一步 output 自動注入 `payload.previousResult`、workflow meta 存 Redis (TTL 7d) |
 | W2 | 靜態 DAG 依賴檢查 | ⏳ | `libs/workflow`、拓撲排序、POST /workflows/dag、菱形依賴並行執行、ADR-006 |
 | W3 | Bull Board 可視化看板 | ⏳ | `@bull-board/nestjs`、自動掃描用戶佇列、/admin/queues |
 | W4 | Chaos Testing + 文章 #5 | ⏳ | 故障注入腳本（Worker crash, Redis 斷線）、系統韌性報告 |
@@ -81,7 +81,7 @@
 
 ```
 apps/
-├── api/src/                           # HTTP API (10 files)
+├── api/src/                           # HTTP API (14 files)
 │   ├── main.ts
 │   ├── app.module.ts
 │   ├── tasks/
@@ -91,6 +91,11 @@ apps/
 │   │   ├── dto/create-task.dto.ts     # userId, priority, model, payload
 │   │   ├── guards/backpressure.guard.ts
 │   │   └── interceptors/idempotency.interceptor.ts
+│   ├── workflows/
+│   │   ├── workflows.module.ts
+│   │   ├── workflows.controller.ts    # POST /workflows/chain, GET /workflows/:id
+│   │   ├── workflows.service.ts       # FlowProducer + Redis meta storage
+│   │   └── dto/create-chain.dto.ts    # userId, priority, steps[]
 │   └── metrics/
 │       ├── metrics.controller.ts      # GET /metrics
 │       └── metrics.module.ts
@@ -139,6 +144,8 @@ docker/
 | `GET` | `/tasks/:id?userId=` | 查詢任務狀態（需帶 userId） | 4月 W2 |
 | `GET` | `/tasks/dlq` | 列出死信佇列 | 5月 W2 |
 | `POST` | `/tasks/dlq/:id/retry` | 恢復 DLQ 任務 | 5月 W2 |
+| `POST` | `/workflows/chain` | 建立線性任務鏈（steps[]，前一步 output 自動注入下一步 payload.previousResult） | 8月 W1 |
+| `GET` | `/workflows/:id` | 查詢工作流狀態（所有 step job 狀態 + 結果） | 8月 W1 |
 | `GET` | `/metrics` | Prometheus 指標（API） | 5月 W3 |
 | `GET` | `:9091/` | Prometheus 指標（Worker） | 5月 W3 |
 
@@ -166,6 +173,7 @@ docker/
 | 本地 LLM | Ollama + Llama 3.2 (免費本地推理, OpenAI 相容 API) | 7月 W1 |
 | 智慧路由 | RouterService — taskType→model 自動路由 + provider 可用性檢查 | 7月 W2 |
 | Provider 限流 | Redis Token Bucket per-provider RPM 限流（等待不失敗） | 7月 W3 |
+| 線性任務鏈 | BullMQ FlowProducer parent-child、前一步 output 經 `job.getChildrenValues()` 注入下一步 `payload.previousResult` | 8月 W1 |
 
 ---
 
@@ -237,4 +245,4 @@ docker/
 
 ---
 
-*最後更新：2026-04-06 | 版本：v0.4.0*
+*最後更新：2026-04-18 | 版本：v0.5.0*

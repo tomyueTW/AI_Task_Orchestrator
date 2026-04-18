@@ -139,7 +139,20 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
     const { payload } = job.data;
     const modelId = this.router.resolve(job.data.model, job.data.taskType);
     this.metrics.taskRouted.inc({ taskType: job.data.taskType ?? 'none', model: modelId });
-    const prompt = (payload.prompt as string) ?? JSON.stringify(payload);
+
+    // Sequential Chain: inject previous step output into payload
+    let effectivePayload: Record<string, unknown> = payload;
+    const childrenValues = await job.getChildrenValues();
+    const childKeys = Object.keys(childrenValues);
+    if (childKeys.length > 0) {
+      const previousResult = childrenValues[childKeys[0]];
+      effectivePayload = { ...payload, previousResult };
+      this.logger.log(
+        `Job ${job.id} received previousResult from ${childKeys.length} child job(s)`,
+      );
+    }
+
+    const prompt = (effectivePayload.prompt as string) ?? JSON.stringify(effectivePayload);
 
     // Hard timeout wrapper
     const timeoutPromise = new Promise<never>((_, reject) => {

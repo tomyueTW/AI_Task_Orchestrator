@@ -1,6 +1,6 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.6.0
+> **版本：** v0.7.0
 > **最後更新：** 2026-04-18
 > **計畫週期：** 2026年4月 ─ 9月
 
@@ -63,7 +63,7 @@
 |---|---|---|---|
 | W1 | 線性任務鏈 (Sequential Chain) | ✅ | `apps/api/src/workflows`（WorkflowsService + FlowProducer）、POST /workflows/chain、GET /workflows/:id、前一步 output 自動注入 `payload.previousResult`、workflow meta 存 Redis (TTL 7d) |
 | W2 | 靜態 DAG 依賴檢查 | ✅ | `libs/workflow`（Kahn's topological sort + DagCoordinator）、POST /workflows/dag、GET /workflows/dag/:id、Redis 原子計數器驅動運行時、菱形依賴/扇出扇入/失敗阻斷、ADR-006 |
-| W3 | Bull Board 可視化看板 | ⏳ | `@bull-board/nestjs`、自動掃描用戶佇列、/admin/queues |
+| W3 | Bull Board 可視化看板 | ✅ | `@bull-board/api` + `@bull-board/express`、`apps/api/src/admin` AdminService、啟動時透過 HttpAdapterHost 掛載於 `/admin/queues`、每 5s 掃描 Redis `bull:tasks-user-*:meta` 自動註冊新用戶佇列 + DLQ |
 | W4 | Chaos Testing + 文章 #5 | ⏳ | 故障注入腳本（Worker crash, Redis 斷線）、系統韌性報告 |
 
 ### 9月：品牌化與結案（待開始）
@@ -98,6 +98,9 @@ apps/
 │   │   └── dto/
 │   │       ├── create-chain.dto.ts    # userId, priority, steps[]
 │   │       └── create-dag.dto.ts      # userId, priority, nodes[{id, dependsOn, payload}]
+│   ├── admin/
+│   │   ├── admin.module.ts
+│   │   └── admin.service.ts           # Bull Board + 動態掃描用戶佇列 (/admin/queues)
 │   └── metrics/
 │       ├── metrics.controller.ts      # GET /metrics
 │       └── metrics.module.ts
@@ -155,6 +158,7 @@ docker/
 | `GET` | `/workflows/:id` | 查詢工作流狀態（所有 step job 狀態 + 結果） | 8月 W1 |
 | `POST` | `/workflows/dag` | 建立 DAG 工作流（nodes[{id, dependsOn, payload}]，拓撲排序驗證 + 並行執行 + 結果注入 payload.dependencies） | 8月 W2 |
 | `GET` | `/workflows/dag/:id` | 查詢 DAG 狀態（layers, 各 node status/result/failedReason） | 8月 W2 |
+| `ALL` | `/admin/queues` | Bull Board 可視化看板（狀態、job 詳情、手動重試/刪除） | 8月 W3 |
 | `GET` | `/metrics` | Prometheus 指標（API） | 5月 W3 |
 | `GET` | `:9091/` | Prometheus 指標（Worker） | 5月 W3 |
 
@@ -185,6 +189,7 @@ docker/
 | 線性任務鏈 | BullMQ FlowProducer parent-child、前一步 output 經 `job.getChildrenValues()` 注入下一步 `payload.previousResult` | 8月 W1 |
 | DAG 工作流 | Kahn's 拓撲排序驗證 + Redis 原子計數器 (`DECR deps-remaining`) 驅動並行入佇列、upstream 結果注入 `payload.dependencies` | 8月 W2 |
 | DAG 失敗阻斷 | 節點失敗標記 `status=failed`，下游 `deps-remaining` 永不歸零，自然停止傳播 | 8月 W2 |
+| 佇列可視化 | Bull Board mounted via HttpAdapterHost + periodic Redis scan 動態註冊新用戶佇列 | 8月 W3 |
 
 ---
 
@@ -206,6 +211,7 @@ docker/
 | `ANTHROPIC_RPM_LIMIT` | `50` | Anthropic RPM 限流 | 7月 W3 |
 | `OPENAI_RPM_LIMIT` | `60` | OpenAI RPM 限流 | 7月 W3 |
 | `OLLAMA_RPM_LIMIT` | `999` | Ollama RPM 限流 | 7月 W3 |
+| `ADMIN_QUEUE_SCAN_INTERVAL_MS` | `5000` | Bull Board 掃描新用戶佇列的頻率 | 8月 W3 |
 
 ---
 
@@ -249,6 +255,8 @@ docker/
 | @anthropic-ai/sdk | latest | Anthropic Claude API |
 | openai | latest | OpenAI GPT API |
 | Ollama | v0.20 | 本地 LLM runtime (Llama 3.2) |
+| @bull-board/api | ^7.0 | Bull Board 核心 |
+| @bull-board/express | ^7.0 | Express adapter for Bull Board |
 | Redis | 7.2 (Alpine) | Queue storage |
 | Prometheus | v2.53 | Metrics collection |
 | Grafana | 11.1 | Dashboard visualization |
@@ -256,4 +264,4 @@ docker/
 
 ---
 
-*最後更新：2026-04-18 | 版本：v0.6.0*
+*最後更新：2026-04-18 | 版本：v0.7.0*

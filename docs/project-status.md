@@ -1,8 +1,8 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.8.0
-> **最後更新：** 2026-04-18
-> **計畫週期：** 2026年4月 ─ 9月
+> **版本：** v0.9.0
+> **最後更新：** 2026-04-21
+> **計畫週期：** 2026年4月 ─ 2027年1月（延長 4 個月，新增視覺化與學習化階段）
 
 ---
 
@@ -14,8 +14,12 @@
 | | 5月 | 可靠性與錯誤處理 (Engineering Depth) | ✅ 完成 |
 | **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | ✅ 完成 |
 | | 7月 | AI Routing & Cost (Intelligence) | ✅ 完成 |
-| **三：複雜場景與品牌包裝** | 8月 | 工作流與 Chaos (Resilience) | ✅ 完成 |
-| | 9月 | 品牌化與結案 (Portfolio Assets) | ⏳ 待開始 |
+| **三：複雜場景與韌性驗證** | 8月 | 工作流與 Chaos (Resilience) | ✅ 完成 |
+| **四：視覺化 (Visualization)** | 9月 | 即時狀態儀表板 (Live Dashboard) | ⏳ 待開始 |
+| | 10月 | 互動式架構與 Chaos 控制台 | ⏳ 待開始 |
+| **五：學習化 (Learnability)** | 11月 | 穩定性三承諾 自練 | ⏳ 待開始 |
+| | 12月 | 進階調度與工作流 自練 | ⏳ 待開始 |
+| **六：品牌化與終極結案** | 2027年1月 | Portfolio / 電子書 / 正式發布 | ⏳ 待開始 |
 
 ---
 
@@ -66,14 +70,52 @@
 | W3 | Bull Board 可視化看板 | ✅ | `@bull-board/api` + `@bull-board/express`、`apps/api/src/admin` AdminService、啟動時透過 HttpAdapterHost 掛載於 `/admin/queues`、每 5s 掃描 Redis `bull:tasks-user-*:meta` 自動註冊新用戶佇列 + DLQ |
 | W4 | Chaos Testing + 文章 #5 | ✅ | `tests/chaos/` 5 腳本（load-generator、kill-worker、redis-chaos、latency-injection、soak）、文章 #5《系統韌性報告》 |
 
-### 9月：品牌化與結案（待開始）
+### 9月：即時狀態儀表板（視覺化階段啟動）
+
+| 週 | 主題 | 狀態 | 計畫內容 |
+|---|---|---|---|
+| W1 | 前端骨架與 API 串接 | ⏳ | 建立 `apps/web/`（React + Vite + TS + Tailwind + shadcn/ui）、API 代理、基礎 layout、ADR-008 前端選型 |
+| W2 | 即時佇列監控 (SSE) | ⏳ | `GET /stream/queues` SSE endpoint、各 user queue live 堆疊條形圖、斷線自動重連 |
+| W3 | 任務流轉動畫 | ⏳ | Framer Motion 畫 API→Queue→Worker→Completed 流水管道、失敗轉 DLQ 動畫 |
+| W4 | 成本即時面板 + 文章 #4 | ⏳ | Prometheus HTTP API 讀 token/cost metrics、趨勢圖；文章 #4《DAG 工作流》 |
+
+### 10月：互動式架構與 Chaos 控制台
+
+| 週 | 主題 | 狀態 | 計畫內容 |
+|---|---|---|---|
+| W1 | DAG 可視化 (ReactFlow) | ⏳ | `/workflows/dag/:id` 前端頁面、四色狀態節點、即時輪詢 |
+| W2 | 互動 DAG 編輯器 | ⏳ | 拖拽建構、匯出 JSON、一鍵送出 POST |
+| W3 | Chaos 控制面板 | ⏳ | `POST /admin/chaos/:action` + ADMIN_TOKEN、前端按鈕觸發、即時觀察指標變化 |
+| W4 | 架構互動地圖 + 影片 #2 | ⏳ | SVG 組件圖 + 點擊彈 ADR 卡；錄製並發布系統全貌 Demo 影片 |
+
+### 11月：學習化階段 — 穩定性三承諾
+
+> **練習方式：** 每週挑一個技術點，不看主專案源碼，從零寫最小可行版本；週六比對差異寫入 `learn/<topic>/diff.md`。
+
+| 週 | 主題 | 狀態 | 練習目標 |
+|---|---|---|---|
+| W1 | 背壓 (Backpressure) 自練 | ⏳ | NestJS Guard + Redis counter + k6 驗證 429 |
+| W2 | 冪等性 (Idempotency) 自練 | ⏳ | Idempotency-Key + Redis SETNX + 二階段 acquire/complete |
+| W3 | 重試與 DLQ 自練 | ⏳ | 指數退避 + DLQ + manual recovery SOP |
+| W4 | 可觀測性 自練 | ⏳ | prom-client + 自建 histogram/counter/gauge + Grafana 面板 |
+
+### 12月：學習化階段 — 進階調度與工作流
+
+| 週 | 主題 | 狀態 | 練習目標 |
+|---|---|---|---|
+| W1 | 公平調度 自練 | ⏳ | per-user queues + FairScheduler round-robin + 隔離驗證 |
+| W2 | 成本追蹤 + 智慧路由 自練 | ⏳ | ModelRegistry + SDK 整合 + 路由 fallback + Token Bucket |
+| W3 | DAG + 拓撲排序 自練 | ⏳ | Kahn's algorithm + DagCoordinator Redis schema |
+| W4 | Chaos Engineering 自練 + 完結文 | ⏳ | 自設新 chaos scenario、學習系列完結文發布 |
+
+### 2027年1月：品牌化與終極結案
 
 | 週 | 主題 | 狀態 |
 |---|---|---|
 | W1 | 個人作品集與 Notion 整合 | ⏳ |
-| W2 | 文檔工程化 | ⏳ |
+| W2 | 文檔工程化（README + Swagger + 白皮書） | ⏳ |
 | W3 | 電子書撰寫與最終影片 | ⏳ |
-| W4 | 正式發布與結案回顧 | ⏳ |
+| W4 | 正式發布與結案回顧（v1.0.0-final） | ⏳ |
 
 ---
 
@@ -235,9 +277,11 @@ docker/
 
 | 類型 | 進度 | 清單 |
 |---|---|---|
-| 技術文章 | 4/5 | ✅ #1 背壓設計、✅ #2 重試與冪等、✅ #3 成本控制、⏳ #4 DAG 工作流、✅ #5 韌性報告 |
-| 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo |
-| ADR | 2/5+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002 冪等性、⏳ ADR-003 可觀測性、⏳ ADR-004 公平調度、⏳ ADR-005 AI 路由、✅ ADR-006 DAG 拓撲排序 |
+| 技術文章 | 4/6 | ✅ #1 背壓、✅ #2 重試與冪等、✅ #3 成本控制、⏳ #4 DAG 工作流（9月 W4）、✅ #5 韌性報告、⏳ #6 學習系列完結文（12月 W4） |
+| 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo（含前端，10月 W4） |
+| ADR | 2/9+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002/003/004/005/007、✅ ADR-006 DAG 拓撲排序、⏳ ADR-008 前端選型（9月 W1）、⏳ ADR-009 學習化階段設計（11月 W1） |
+| 前端應用 | 0/1 | ⏳ `apps/web/` React 儀表板 + DAG 編輯器 + Chaos 控制台（9–10月） |
+| 學習筆記 | 0/8 | ⏳ `learn/` 8 個技術點練習目錄（11–12月） |
 | 電子書 | 0/1 | ⏳《Building Scalable AI Agent Infrastructure》 |
 | 技術白皮書 | 0/1 | ⏳ "How we scaled to 10k TPS" |
 
@@ -265,4 +309,4 @@ docker/
 
 ---
 
-*最後更新：2026-04-18 | 版本：v0.8.0*
+*最後更新：2026-04-21 | 版本：v0.9.0*

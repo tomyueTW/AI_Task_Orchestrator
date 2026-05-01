@@ -491,7 +491,7 @@ POST /workflows/dag
 | ADR-005 | AI 路由決策引擎設計 (Cost-Effective Routing) | ⏳ Pending | 7月 |
 | ADR-006 | DAG 依賴拓撲排序策略 | ✅ Accepted | 8月 |
 | ADR-007 | 成本模型與模型註冊表設計 | ⏳ Pending | 7月 |
-| ADR-008 | 前端技術選型（React + Vite + SSE + ReactFlow） | ⏳ Pending | 9月 |
+| ADR-008 | 前端技術選型（React + Vite + Tailwind v4） | ✅ Accepted | 9月 |
 | ADR-009 | 學習化階段設計（reimplementation-first study） | ⏳ Pending | 11月 |
 
 ---
@@ -564,4 +564,4 @@ perf(cache): implement semantic cache for AI responses
 
 ---
 
-*最後更新：2026-04-21 | 版本：v0.8.0*
+*最後更新：2026-05-01 | 版本：v0.9.0*

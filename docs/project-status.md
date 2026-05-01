@@ -1,7 +1,7 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.9.0
-> **最後更新：** 2026-04-21
+> **版本：** v0.10.0
+> **最後更新：** 2026-05-01
 > **計畫週期：** 2026年4月 ─ 2027年1月（延長 4 個月，新增視覺化與學習化階段）
 
 ---
@@ -15,7 +15,7 @@
 | **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | ✅ 完成 |
 | | 7月 | AI Routing & Cost (Intelligence) | ✅ 完成 |
 | **三：複雜場景與韌性驗證** | 8月 | 工作流與 Chaos (Resilience) | ✅ 完成 |
-| **四：視覺化 (Visualization)** | 9月 | 即時狀態儀表板 (Live Dashboard) | ⏳ 待開始 |
+| **四：視覺化 (Visualization)** | 9月 | 即時狀態儀表板 (Live Dashboard) | 🔄 進行中 |
 | | 10月 | 互動式架構與 Chaos 控制台 | ⏳ 待開始 |
 | **五：學習化 (Learnability)** | 11月 | 穩定性三承諾 自練 | ⏳ 待開始 |
 | | 12月 | 進階調度與工作流 自練 | ⏳ 待開始 |
@@ -74,7 +74,7 @@
 
 | 週 | 主題 | 狀態 | 計畫內容 |
 |---|---|---|---|
-| W1 | 前端骨架與 API 串接 | ⏳ | 建立 `apps/web/`（React + Vite + TS + Tailwind + shadcn/ui）、API 代理、基礎 layout、ADR-008 前端選型 |
+| W1 | 前端骨架與 API 串接 | ✅ | `apps/web/`（React 18 + Vite 5 + Tailwind v4 + react-router-dom 6）、Vite proxy → :3000、Layout（側欄/頁頭）+ 4 placeholder 頁、API client、ADR-008 |
 | W2 | 即時佇列監控 (SSE) | ⏳ | `GET /stream/queues` SSE endpoint、各 user queue live 堆疊條形圖、斷線自動重連 |
 | W3 | 任務流轉動畫 | ⏳ | Framer Motion 畫 API→Queue→Worker→Completed 流水管道、失敗轉 DLQ 動畫 |
 | W4 | 成本即時面板 + 文章 #4 | ⏳ | Prometheus HTTP API 讀 token/cost metrics、趨勢圖；文章 #4《DAG 工作流》 |
@@ -146,10 +146,25 @@ apps/
 │   └── metrics/
 │       ├── metrics.controller.ts      # GET /metrics
 │       └── metrics.module.ts
-└── worker/src/                        # BullMQ Worker (3 files)
-    ├── main.ts                        # + metrics :9091
-    ├── worker.module.ts
-    └── fair-scheduler.service.ts      # 公平調度 + 真實 LLM 呼叫
+├── worker/src/                        # BullMQ Worker (3 files)
+│   ├── main.ts                        # + metrics :9091
+│   ├── worker.module.ts
+│   └── fair-scheduler.service.ts      # 公平調度 + 真實 LLM 呼叫
+└── web/                               # React 前端 (9月 W1+)
+    ├── index.html
+    ├── vite.config.mts                # Vite 5 + Tailwind v4 plugin (ESM)
+    ├── tsconfig.json
+    └── src/
+        ├── main.tsx
+        ├── App.tsx                    # react-router-dom routes
+        ├── index.css                  # @import "tailwindcss"
+        ├── components/Layout.tsx      # 側欄 + 頁頭 + Outlet
+        ├── lib/api.ts                 # createTask / getTask / listDlq / fetchPrometheus
+        └── pages/
+            ├── Dashboard.tsx          # 即時儀表板
+            ├── Workflows.tsx          # DAG/Chain (placeholder)
+            ├── Costs.tsx              # 成本面板 (placeholder)
+            └── Architecture.tsx       # 系統架構 (placeholder)
 
 libs/
 ├── queue/src/                         # 佇列抽象 (3 files)
@@ -279,7 +294,7 @@ docker/
 |---|---|---|
 | 技術文章 | 4/6 | ✅ #1 背壓、✅ #2 重試與冪等、✅ #3 成本控制、⏳ #4 DAG 工作流（9月 W4）、✅ #5 韌性報告、⏳ #6 學習系列完結文（12月 W4） |
 | 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo（含前端，10月 W4） |
-| ADR | 2/9+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002/003/004/005/007、✅ ADR-006 DAG 拓撲排序、⏳ ADR-008 前端選型（9月 W1）、⏳ ADR-009 學習化階段設計（11月 W1） |
+| ADR | 3/9+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002/003/004/005/007、✅ ADR-006 DAG 拓撲排序、✅ ADR-008 前端選型、⏳ ADR-009 學習化階段設計（11月 W1） |
 | 前端應用 | 0/1 | ⏳ `apps/web/` React 儀表板 + DAG 編輯器 + Chaos 控制台（9–10月） |
 | 學習筆記 | 0/8 | ⏳ `learn/` 8 個技術點練習目錄（11–12月） |
 | 電子書 | 0/1 | ⏳《Building Scalable AI Agent Infrastructure》 |
@@ -302,6 +317,10 @@ docker/
 | Ollama | v0.20 | 本地 LLM runtime (Llama 3.2) |
 | @bull-board/api | ^7.0 | Bull Board 核心 |
 | @bull-board/express | ^7.0 | Express adapter for Bull Board |
+| React | ^18.3 | 前端 UI 框架 |
+| Vite | ^5.4 | 前端 build / dev server |
+| Tailwind CSS | ^4.2 | 樣式 (no-config v4) |
+| react-router-dom | ^6.30 | 前端路由 |
 | Redis | 7.2 (Alpine) | Queue storage |
 | Prometheus | v2.53 | Metrics collection |
 | Grafana | 11.1 | Dashboard visualization |
@@ -309,4 +328,4 @@ docker/
 
 ---
 
-*最後更新：2026-04-21 | 版本：v0.9.0*
+*最後更新：2026-05-01 | 版本：v0.10.0*

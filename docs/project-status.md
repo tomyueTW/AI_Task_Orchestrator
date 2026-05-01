@@ -1,6 +1,6 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.10.0
+> **版本：** v0.11.0
 > **最後更新：** 2026-05-01
 > **計畫週期：** 2026年4月 ─ 2027年1月（延長 4 個月，新增視覺化與學習化階段）
 
@@ -75,7 +75,7 @@
 | 週 | 主題 | 狀態 | 計畫內容 |
 |---|---|---|---|
 | W1 | 前端骨架與 API 串接 | ✅ | `apps/web/`（React 18 + Vite 5 + Tailwind v4 + react-router-dom 6）、Vite proxy → :3000、Layout（側欄/頁頭）+ 4 placeholder 頁、API client、ADR-008 |
-| W2 | 即時佇列監控 (SSE) | ⏳ | `GET /stream/queues` SSE endpoint、各 user queue live 堆疊條形圖、斷線自動重連 |
+| W2 | 即時佇列監控 (SSE) | ✅ | `apps/api/src/stream`（StreamController + StreamService）每 1s push per-user queue + DLQ 計數；前端 `useQueueStream` hook + EventSource 自動重連；`QueueStackedBar`（recharts）即時堆疊條形圖；Dashboard 4 個總計卡片 + SSE 連線狀態 pill |
 | W3 | 任務流轉動畫 | ⏳ | Framer Motion 畫 API→Queue→Worker→Completed 流水管道、失敗轉 DLQ 動畫 |
 | W4 | 成本即時面板 + 文章 #4 | ⏳ | Prometheus HTTP API 讀 token/cost metrics、趨勢圖；文章 #4《DAG 工作流》 |
 
@@ -143,6 +143,10 @@ apps/
 │   ├── admin/
 │   │   ├── admin.module.ts
 │   │   └── admin.service.ts           # Bull Board + 動態掃描用戶佇列 (/admin/queues)
+│   ├── stream/
+│   │   ├── stream.module.ts
+│   │   ├── stream.controller.ts       # GET /stream/queues (SSE)
+│   │   └── stream.service.ts          # 1s snapshot：per-user queue counts + DLQ
 │   └── metrics/
 │       ├── metrics.controller.ts      # GET /metrics
 │       └── metrics.module.ts
@@ -158,8 +162,12 @@ apps/
         ├── main.tsx
         ├── App.tsx                    # react-router-dom routes
         ├── index.css                  # @import "tailwindcss"
-        ├── components/Layout.tsx      # 側欄 + 頁頭 + Outlet
-        ├── lib/api.ts                 # createTask / getTask / listDlq / fetchPrometheus
+        ├── components/
+        │   ├── Layout.tsx             # 側欄 + 頁頭 + Outlet
+        │   └── QueueStackedBar.tsx    # recharts 即時堆疊條形圖
+        ├── lib/
+        │   ├── api.ts                 # createTask / getTask / listDlq / fetchPrometheus
+        │   └── useQueueStream.ts      # EventSource hook (auto-reconnect)
         └── pages/
             ├── Dashboard.tsx          # 即時儀表板
             ├── Workflows.tsx          # DAG/Chain (placeholder)
@@ -216,6 +224,7 @@ docker/
 | `POST` | `/workflows/dag` | 建立 DAG 工作流（nodes[{id, dependsOn, payload}]，拓撲排序驗證 + 並行執行 + 結果注入 payload.dependencies） | 8月 W2 |
 | `GET` | `/workflows/dag/:id` | 查詢 DAG 狀態（layers, 各 node status/result/failedReason） | 8月 W2 |
 | `ALL` | `/admin/queues` | Bull Board 可視化看板（狀態、job 詳情、手動重試/刪除） | 8月 W3 |
+| `GET` | `/stream/queues` | SSE 串流：每 1s 推送各 user queue waiting/active/completed/failed/delayed + DLQ 計數 | 9月 W2 |
 | `GET` | `/metrics` | Prometheus 指標（API） | 5月 W3 |
 | `GET` | `:9091/` | Prometheus 指標（Worker） | 5月 W3 |
 
@@ -321,6 +330,7 @@ docker/
 | Vite | ^5.4 | 前端 build / dev server |
 | Tailwind CSS | ^4.2 | 樣式 (no-config v4) |
 | react-router-dom | ^6.30 | 前端路由 |
+| recharts | ^2.15 | 即時佇列堆疊條形圖 |
 | Redis | 7.2 (Alpine) | Queue storage |
 | Prometheus | v2.53 | Metrics collection |
 | Grafana | 11.1 | Dashboard visualization |
@@ -328,4 +338,4 @@ docker/
 
 ---
 
-*最後更新：2026-05-01 | 版本：v0.10.0*
+*最後更新：2026-05-01 | 版本：v0.11.0*

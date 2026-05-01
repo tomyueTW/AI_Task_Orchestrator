@@ -4,6 +4,7 @@ import { ObservabilityModule } from '@app/observability';
 import { TasksModule } from './tasks/tasks.module';
 import { WorkflowsModule } from './workflows/workflows.module';
 import { AdminModule } from './admin/admin.module';
+import { StreamModule } from './stream/stream.module';
 import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { MetricsModule } from './metrics/metrics.module';
     TasksModule,
     WorkflowsModule,
     AdminModule,
+    StreamModule,
     MetricsModule,
   ],
 })

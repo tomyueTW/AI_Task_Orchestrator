@@ -1,8 +1,9 @@
 import { useQueueStream } from '../lib/useQueueStream';
 import { QueueStackedBar } from '../components/QueueStackedBar';
+import { TaskFlowAnimation } from '../components/TaskFlowAnimation';
 
 export function Dashboard() {
-  const { snapshot, status } = useQueueStream();
+  const { snapshot, flowEvents, status } = useQueueStream();
 
   const totals = snapshot?.queues.reduce(
     (acc, q) => ({
@@ -38,7 +39,7 @@ export function Dashboard() {
 
       <QueueStackedBar data={snapshot?.queues ?? []} />
 
-      <Placeholder label="任務流轉動畫 (9月 W3)" />
+      <TaskFlowAnimation events={flowEvents} />
     </section>
   );
 }
@@ -80,10 +81,3 @@ function StatusPill({ status, ts }: { status: string; ts?: string }) {
   );
 }
 
-function Placeholder({ label }: { label: string }) {
-  return (
-    <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-slate-700 bg-slate-900/20 text-sm text-slate-500">
-      {label}
-    </div>
-  );
-}

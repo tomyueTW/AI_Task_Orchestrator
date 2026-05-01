@@ -19,10 +19,23 @@ export class StreamController {
       res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
+    let lastEventCursor = 0;
+
     const tick = async () => {
       try {
         const snapshot = await this.stream.snapshot();
         send('snapshot', snapshot);
+
+        const events = this.stream.recentEvents();
+        if (events.length > lastEventCursor) {
+          const fresh = events.slice(lastEventCursor);
+          for (const ev of fresh) send('flow', ev);
+          lastEventCursor = events.length;
+        } else if (events.length < lastEventCursor) {
+          // ring buffer rotated — replay all
+          for (const ev of events) send('flow', ev);
+          lastEventCursor = events.length;
+        }
       } catch (err: unknown) {
         send('error', { message: (err as Error).message });
       }

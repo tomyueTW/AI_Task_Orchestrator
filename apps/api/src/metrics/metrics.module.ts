@@ -6,10 +6,12 @@ import { MetricsService } from '@app/observability';
 import { QueueModule, TASK_QUEUE_PREFIX, TASK_DLQ } from '@app/queue';
 import { REDIS_CONNECTION, RedisConnectionConfig } from '@app/queue/queue.module';
 import { MetricsController } from './metrics.controller';
+import { CostSummaryService } from './cost-summary.service';
 
 @Module({
   imports: [QueueModule],
   controllers: [MetricsController],
+  providers: [CostSummaryService],
 })
 export class MetricsModule {
   private interval: ReturnType<typeof setInterval> | undefined;

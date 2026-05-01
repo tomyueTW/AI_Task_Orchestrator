@@ -1,6 +1,6 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.12.0
+> **版本：** v0.13.0
 > **最後更新：** 2026-05-01
 > **計畫週期：** 2026年4月 ─ 2027年1月（延長 4 個月，新增視覺化與學習化階段）
 
@@ -15,7 +15,7 @@
 | **二：進階調度與 AI 路由** | 6月 | 公平性與優先級 (Scheduling) | ✅ 完成 |
 | | 7月 | AI Routing & Cost (Intelligence) | ✅ 完成 |
 | **三：複雜場景與韌性驗證** | 8月 | 工作流與 Chaos (Resilience) | ✅ 完成 |
-| **四：視覺化 (Visualization)** | 9月 | 即時狀態儀表板 (Live Dashboard) | 🔄 進行中 |
+| **四：視覺化 (Visualization)** | 9月 | 即時狀態儀表板 (Live Dashboard) | ✅ 完成 |
 | | 10月 | 互動式架構與 Chaos 控制台 | ⏳ 待開始 |
 | **五：學習化 (Learnability)** | 11月 | 穩定性三承諾 自練 | ⏳ 待開始 |
 | | 12月 | 進階調度與工作流 自練 | ⏳ 待開始 |
@@ -77,7 +77,7 @@
 | W1 | 前端骨架與 API 串接 | ✅ | `apps/web/`（React 18 + Vite 5 + Tailwind v4 + react-router-dom 6）、Vite proxy → :3000、Layout（側欄/頁頭）+ 4 placeholder 頁、API client、ADR-008 |
 | W2 | 即時佇列監控 (SSE) | ✅ | `apps/api/src/stream`（StreamController + StreamService）每 1s push per-user queue + DLQ 計數；前端 `useQueueStream` hook + EventSource 自動重連；`QueueStackedBar`（recharts）即時堆疊條形圖；Dashboard 4 個總計卡片 + SSE 連線狀態 pill |
 | W3 | 任務流轉動畫 | ✅ | API SSE 擴增 `flow` event（QueueEvents 訂閱 added/active/completed/failed/dlq）；前端 `TaskFlowAnimation`（framer-motion + SVG）以五階段欄位顯示流動圓點，spring 動畫 |
-| W4 | 成本即時面板 + 文章 #4 | ⏳ | Prometheus HTTP API 讀 token/cost metrics、趨勢圖；文章 #4《DAG 工作流》 |
+| W4 | 成本即時面板 + 文章 #4 | ✅ | API 新增 `GET /metrics/summary`（CostSummaryService 解析 Worker :9091 Prometheus 文字格式）；前端 `useCostSummary` hook + Costs 頁（4 卡片 + 累計成本 LineChart + Routed by Model BarChart + 限流表）；文章 #4 發布 |
 
 ### 10月：互動式架構與 Chaos 控制台
 
@@ -148,8 +148,9 @@ apps/
 │   │   ├── stream.controller.ts       # GET /stream/queues (SSE)
 │   │   └── stream.service.ts          # 1s snapshot + QueueEvents 訂閱 (ring buffer 50)
 │   └── metrics/
-│       ├── metrics.controller.ts      # GET /metrics
-│       └── metrics.module.ts
+│       ├── metrics.controller.ts      # GET /metrics, GET /metrics/summary
+│       ├── metrics.module.ts
+│       └── cost-summary.service.ts    # 解析 Worker :9091 Prometheus 文字
 ├── worker/src/                        # BullMQ Worker (3 files)
 │   ├── main.ts                        # + metrics :9091
 │   ├── worker.module.ts
@@ -168,7 +169,8 @@ apps/
         │   └── TaskFlowAnimation.tsx  # framer-motion SVG 任務流動動畫
         ├── lib/
         │   ├── api.ts                 # createTask / getTask / listDlq / fetchPrometheus
-        │   └── useQueueStream.ts      # EventSource hook (auto-reconnect)
+        │   ├── useQueueStream.ts      # EventSource hook (snapshot + flow events)
+        │   └── useCostSummary.ts      # /metrics/summary 5s 輪詢 + trend buffer
         └── pages/
             ├── Dashboard.tsx          # 即時儀表板
             ├── Workflows.tsx          # DAG/Chain (placeholder)
@@ -227,6 +229,7 @@ docker/
 | `ALL` | `/admin/queues` | Bull Board 可視化看板（狀態、job 詳情、手動重試/刪除） | 8月 W3 |
 | `GET` | `/stream/queues` | SSE 串流：每 1s push `snapshot`（per-user queue counts + DLQ）+ `flow` events（job lifecycle, ring buffer 50 筆） | 9月 W2 / 擴充 9月 W3 |
 | `GET` | `/metrics` | Prometheus 指標（API） | 5月 W3 |
+| `GET` | `/metrics/summary` | Worker :9091 Prometheus 解析後的 JSON 摘要（cost / tokens / routing / rate-limit / failures） | 9月 W4 |
 | `GET` | `:9091/` | Prometheus 指標（Worker） | 5月 W3 |
 
 ---
@@ -280,6 +283,7 @@ docker/
 | `OPENAI_RPM_LIMIT` | `60` | OpenAI RPM 限流 | 7月 W3 |
 | `OLLAMA_RPM_LIMIT` | `999` | Ollama RPM 限流 | 7月 W3 |
 | `ADMIN_QUEUE_SCAN_INTERVAL_MS` | `5000` | Bull Board 掃描新用戶佇列的頻率 | 8月 W3 |
+| `WORKER_METRICS_URL` | `http://localhost:9091/` | API 拉取 Worker Prometheus metrics 來源 | 9月 W4 |
 
 ---
 
@@ -302,7 +306,7 @@ docker/
 
 | 類型 | 進度 | 清單 |
 |---|---|---|
-| 技術文章 | 4/6 | ✅ #1 背壓、✅ #2 重試與冪等、✅ #3 成本控制、⏳ #4 DAG 工作流（9月 W4）、✅ #5 韌性報告、⏳ #6 學習系列完結文（12月 W4） |
+| 技術文章 | 5/6 | ✅ #1 背壓、✅ #2 重試與冪等、✅ #3 成本控制、✅ #4 DAG 工作流、✅ #5 韌性報告、⏳ #6 學習系列完結文（12月 W4） |
 | 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo（含前端，10月 W4） |
 | ADR | 3/9+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002/003/004/005/007、✅ ADR-006 DAG 拓撲排序、✅ ADR-008 前端選型、⏳ ADR-009 學習化階段設計（11月 W1） |
 | 前端應用 | 0/1 | ⏳ `apps/web/` React 儀表板 + DAG 編輯器 + Chaos 控制台（9–10月） |
@@ -340,4 +344,4 @@ docker/
 
 ---
 
-*最後更新：2026-05-01 | 版本：v0.12.0*
+*最後更新：2026-05-01 | 版本：v0.13.0*

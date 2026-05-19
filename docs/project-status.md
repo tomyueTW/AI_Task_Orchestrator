@@ -1,6 +1,6 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.16.0
+> **版本：** v0.17.0
 > **最後更新：** 2026-05-19
 > **計畫週期：** 2026年4月 ─ 2027年1月（延長 4 個月，新增視覺化與學習化階段）
 
@@ -16,7 +16,7 @@
 | | 7月 | AI Routing & Cost (Intelligence) | ✅ 完成 |
 | **三：複雜場景與韌性驗證** | 8月 | 工作流與 Chaos (Resilience) | ✅ 完成 |
 | **四：視覺化 (Visualization)** | 9月 | 即時狀態儀表板 (Live Dashboard) | ✅ 完成 |
-| | 10月 | 互動式架構與 Chaos 控制台 | 🚧 進行中（W1–W3 ✅） |
+| | 10月 | 互動式架構與 Chaos 控制台 | ✅ 完成（W1–W4 開發；影片 #2 待錄製） |
 | **五：學習化 (Learnability)** | 11月 | 穩定性三承諾 自練 | ⏳ 待開始 |
 | | 12月 | 進階調度與工作流 自練 | ⏳ 待開始 |
 | **六：品牌化與終極結案** | 2027年1月 | Portfolio / 電子書 / 正式發布 | ⏳ 待開始 |
@@ -86,7 +86,7 @@
 | W1 | DAG 可視化 (ReactFlow) | ✅ | `reactflow@11.11.4`；新增 `/workflows/dag/:id` 前端頁（`DagView` + `DagGraph`）；以 backend `layers` 做 layered layout（無 force 模擬，re-poll 不抖動）；四色狀態（pending/active/completed/failed，ready 併入 pending）；`useDagStatus` 1.5s 輪詢、終態自動停止；節點點擊側欄詳情（status/dependsOn/jobId/result/failedReason）；MiniMap + Controls；`GET /workflows/dag/:id` 回傳擴增 per-node `dependsOn`（`DagCoordinator.getAllNodes`）；Workflows 頁加入「開啟既有 DAG」+ 範例 DAG 產生器（菱形 / 扇出扇入 12 / 渲染壓測 52） |
 | W2 | 互動 DAG 編輯器 | ✅ | `/workflows/editor`（`DagEditor`）：ReactFlow 可編輯畫布（`useNodesState`/`useEdgesState`）、新增節點、拖曳連線（上游→下游即 `dependsOn`）、Delete 鍵刪除節點並自動清除懸空邊；節點側欄編輯 `payload`(JSON) / `taskType`；`lib/dagValidation.ts` 共用循環偵測 — `onConnect` 即時擋環 + 送出前 `validateDag`（前端先擋）；後端 `topologicalLayers` 失敗改映射為 **400 BadRequest**（後端再擋），`createDag` 解析 Nest 錯誤訊息回顯；匯出 JSON（檢視/複製）；送出後導向 W1 執行視圖 `/workflows/dag/:id` |
 | W3 | Chaos 控制面板 | ✅ | `libs/queue` 新增 chaos 指令契約（`CHAOS_KEY` / `ChaosDirective` / `CHAOS_CATALOG`）；API `AdminModule` 新增 `ChaosController`（`POST /admin/chaos/:action`、`GET /admin/chaos`）+ `ChaosService`（寫 time-boxed directive 至 Redis，PX TTL）+ `AdminTokenGuard`（fail-closed、`x-admin-token`、`timingSafeEqual`）；Worker `FairScheduler` 1s 輪詢 chaos 指令自我套用：injectLatency（race 內注入延遲 → 硬超時 → DLQ）、killWorker（close+suppress 窗口後重建）、pauseRedis（pause/resume）；前端 `Chaos` 頁（token 閘 + 三動作卡 + 即時 failed/dlq/timeout delta + 倒數）+ 導覽列；`.env.example` 加 `ADMIN_TOKEN`；週六重跑 5 chaos 腳本；§十二 權限設計 |
-| W4 | 架構互動地圖 + 影片 #2 | ⏳ | SVG 組件圖 + 點擊彈 ADR 卡；錄製並發布系統全貌 Demo 影片 |
+| W4 | 架構互動地圖 + 影片 #2 | ✅ 開發完成 | `Architecture.tsx` 改為自包含互動 SVG：7 組件（Web/API/Redis/Worker/LLM/Prometheus/Grafana）+ 資料/觀測邊（實線/虛線 + 箭頭 + 標籤）；點擊組件 → 側欄卡顯示描述 + 對應 ADR（已撰寫者連 `docs/ADR-00x*.md`，草稿/Pending 標註並指向 execution-plans ADR 索引）+ 真實代碼路徑 + 關鍵 Prometheus 指標；分類圖例。🎬 影片 #2（架構導覽 + Chaos 演示）為人工錄製/發布，仍 ⏳ |
 
 ### 11月：學習化階段 — 穩定性三承諾
 
@@ -185,7 +185,7 @@ apps/
             ├── DagEditor.tsx          # /workflows/editor — 拖拽建構 + 擋環 + 匯出 + 送出 (10月 W2)
             ├── Costs.tsx              # 成本面板 (placeholder)
             ├── Chaos.tsx              # /chaos — token 閘 + 三動作卡 + 即時指標 delta (10月 W3)
-            └── Architecture.tsx       # 系統架構 (placeholder)
+            └── Architecture.tsx       # /architecture — 互動 SVG 組件圖 + ADR/代碼/指標卡 (10月 W4)
 
 libs/
 ├── queue/src/                         # 佇列抽象 (4 files)
@@ -277,6 +277,7 @@ docker/
 | DAG 即時視覺化 | ReactFlow 依 backend 拓撲 `layers` 做 layered layout（無 force 模擬）、四色狀態節點、`useDagStatus` 1.5s 輪詢且終態自動停止、節點點擊詳情側欄 | 10月 W1 |
 | 互動 DAG 編輯器 | ReactFlow 可編輯畫布（增/連/刪）、`onConnect` 即時擋環 + 送出前 `validateDag`（前端先擋）、後端 `topologicalLayers`→400（後端再擋）、匯出 JSON、一鍵 POST 後導向執行視圖 | 10月 W2 |
 | Chaos 控制台 | API 寫 time-boxed Redis directive、Worker 1s 輪詢自套用（killWorker/pauseRedis/injectLatency）、`AdminTokenGuard` fail-closed、前端面板即時觀察 failed/dlq/timeout delta + 倒數 | 10月 W3 |
+| 系統架構互動地圖 | 自包含 SVG 組件圖（資料/觀測邊）、點擊彈卡（ADR 文件連結 + 真實代碼路徑 + Prometheus 指標） | 10月 W4 |
 
 ---
 
@@ -324,9 +325,9 @@ docker/
 | 類型 | 進度 | 清單 |
 |---|---|---|
 | 技術文章 | 5/6 | ✅ #1 背壓、✅ #2 重試與冪等、✅ #3 成本控制、✅ #4 DAG 工作流、✅ #5 韌性報告、⏳ #6 學習系列完結文（12月 W4） |
-| 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo（含前端，10月 W4） |
+| 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo（前端架構地圖已就緒可錄製，影片本身待人工錄製/發布） |
 | ADR | 3/9+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002/003/004/005/007、✅ ADR-006 DAG 拓撲排序、✅ ADR-008 前端選型、⏳ ADR-009 學習化階段設計（11月 W1） |
-| 前端應用 | 🚧 進行中 | ✅ 即時儀表板（9月）、✅ DAG 視覺化（10月 W1）、✅ 互動 DAG 編輯器（10月 W2）、✅ Chaos 控制台（10月 W3）、⏳ 架構互動地圖（10月 W4） |
+| 前端應用 | ✅ 完成 | ✅ 即時儀表板（9月）、✅ DAG 視覺化（10月 W1）、✅ 互動 DAG 編輯器（10月 W2）、✅ Chaos 控制台（10月 W3）、✅ 架構互動地圖（10月 W4） |
 | 學習筆記 | 0/8 | ⏳ `learn/` 8 個技術點練習目錄（11–12月） |
 | 電子書 | 0/1 | ⏳《Building Scalable AI Agent Infrastructure》 |
 | 技術白皮書 | 0/1 | ⏳ "How we scaled to 10k TPS" |
@@ -403,4 +404,18 @@ docker/
 
 ---
 
-*最後更新：2026-05-19 | 版本：v0.16.0*
+## 十三、架構地圖設計 + 影片 #2 狀態（10月 W4 週日總結）
+
+| 議題 | 決策 | 理由 |
+|---|---|---|
+| 圖形技術 | 手寫 SVG（非 ReactFlow / mermaid） | 架構圖為靜態固定佈局、需精準控制座標與點擊熱區；不需 ReactFlow 的拖拽/縮放，少一層相依 |
+| ADR 連結處理 | 已撰寫者連真實 `docs/ADR-00x*.md` 路徑；草稿/Pending 明確標狀態並指向 execution-plans ADR 索引 | 誠實呈現：不偽造尚未撰寫的 ADR 連結；前端無法路由到 docs 檔，故以可複製路徑呈現而非假超連結 |
+| 代碼路徑 | 僅列已驗證存在的 repo 路徑 | 作為導覽錨點，避免誤導 |
+| 影片 #2 | **未錄製**，仍標 ⏳ | 錄製/發布為人工活動，不可由程式碼產生；前端架構地圖 + Chaos 控制台已就緒，具備錄製條件 |
+
+> **視覺化階段（第四階段）開發部分至此全數完成**（9月即時儀表板 + 10月 W1–W4）。
+> 待辦人工項：影片 #1（公平調度）、影片 #2（系統全貌）。
+
+---
+
+*最後更新：2026-05-19 | 版本：v0.17.0*

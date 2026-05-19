@@ -40,3 +40,56 @@ export async function fetchPrometheus(): Promise<string> {
   if (!res.ok) throw new Error(`fetchPrometheus failed: ${res.status}`);
   return res.text();
 }
+
+// ── DAG workflow ──────────────────────────────────────────────────────────
+
+export type DagNodeStatus =
+  | 'pending'
+  | 'ready'
+  | 'active'
+  | 'completed'
+  | 'failed';
+
+export interface DagStatusNode {
+  id: string;
+  dependsOn: string[];
+  jobId?: string;
+  status: DagNodeStatus;
+  result?: unknown;
+  failedReason?: string;
+}
+
+export interface DagStatus {
+  dagId: string;
+  userId: string;
+  createdAt: string;
+  /** Topological layers — node ids grouped by parallel-execution depth. */
+  layers: string[][];
+  nodes: DagStatusNode[];
+}
+
+export interface DagNodeInput {
+  id: string;
+  payload: Record<string, unknown>;
+  dependsOn?: string[];
+  taskType?: 'simple' | 'code' | 'complex';
+}
+
+export async function getDagStatus(id: string): Promise<DagStatus> {
+  const res = await fetch(`${BASE}/workflows/dag/${encodeURIComponent(id)}`);
+  if (!res.ok) throw new Error(`getDagStatus failed: ${res.status}`);
+  return res.json();
+}
+
+export async function createDag(input: {
+  userId: string;
+  nodes: DagNodeInput[];
+}): Promise<{ dagId: string; layers: string[][] }> {
+  const res = await fetch(`${BASE}/workflows/dag`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`createDag failed: ${res.status}`);
+  return res.json();
+}

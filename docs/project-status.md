@@ -1,7 +1,7 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.13.0
-> **最後更新：** 2026-05-01
+> **版本：** v0.14.0
+> **最後更新：** 2026-05-19
 > **計畫週期：** 2026年4月 ─ 2027年1月（延長 4 個月，新增視覺化與學習化階段）
 
 ---
@@ -16,7 +16,7 @@
 | | 7月 | AI Routing & Cost (Intelligence) | ✅ 完成 |
 | **三：複雜場景與韌性驗證** | 8月 | 工作流與 Chaos (Resilience) | ✅ 完成 |
 | **四：視覺化 (Visualization)** | 9月 | 即時狀態儀表板 (Live Dashboard) | ✅ 完成 |
-| | 10月 | 互動式架構與 Chaos 控制台 | ⏳ 待開始 |
+| | 10月 | 互動式架構與 Chaos 控制台 | 🚧 進行中（W1 ✅） |
 | **五：學習化 (Learnability)** | 11月 | 穩定性三承諾 自練 | ⏳ 待開始 |
 | | 12月 | 進階調度與工作流 自練 | ⏳ 待開始 |
 | **六：品牌化與終極結案** | 2027年1月 | Portfolio / 電子書 / 正式發布 | ⏳ 待開始 |
@@ -83,7 +83,7 @@
 
 | 週 | 主題 | 狀態 | 計畫內容 |
 |---|---|---|---|
-| W1 | DAG 可視化 (ReactFlow) | ⏳ | `/workflows/dag/:id` 前端頁面、四色狀態節點、即時輪詢 |
+| W1 | DAG 可視化 (ReactFlow) | ✅ | `reactflow@11.11.4`；新增 `/workflows/dag/:id` 前端頁（`DagView` + `DagGraph`）；以 backend `layers` 做 layered layout（無 force 模擬，re-poll 不抖動）；四色狀態（pending/active/completed/failed，ready 併入 pending）；`useDagStatus` 1.5s 輪詢、終態自動停止；節點點擊側欄詳情（status/dependsOn/jobId/result/failedReason）；MiniMap + Controls；`GET /workflows/dag/:id` 回傳擴增 per-node `dependsOn`（`DagCoordinator.getAllNodes`）；Workflows 頁加入「開啟既有 DAG」+ 範例 DAG 產生器（菱形 / 扇出扇入 12 / 渲染壓測 52） |
 | W2 | 互動 DAG 編輯器 | ⏳ | 拖拽建構、匯出 JSON、一鍵送出 POST |
 | W3 | Chaos 控制面板 | ⏳ | `POST /admin/chaos/:action` + ADMIN_TOKEN、前端按鈕觸發、即時觀察指標變化 |
 | W4 | 架構互動地圖 + 影片 #2 | ⏳ | SVG 組件圖 + 點擊彈 ADR 卡；錄製並發布系統全貌 Demo 影片 |
@@ -136,7 +136,7 @@ apps/
 │   ├── workflows/
 │   │   ├── workflows.module.ts
 │   │   ├── workflows.controller.ts    # POST /workflows/chain|dag, GET /workflows/:id|dag/:id
-│   │   ├── workflows.service.ts       # FlowProducer (chain) + DagCoordinator (dag)
+│   │   ├── workflows.service.ts       # FlowProducer (chain) + DagCoordinator (dag)；DagStatusNode 含 dependsOn (10月 W1)
 │   │   └── dto/
 │   │       ├── create-chain.dto.ts    # userId, priority, steps[]
 │   │       └── create-dag.dto.ts      # userId, priority, nodes[{id, dependsOn, payload}]
@@ -166,14 +166,17 @@ apps/
         ├── components/
         │   ├── Layout.tsx             # 側欄 + 頁頭 + Outlet
         │   ├── QueueStackedBar.tsx    # recharts 即時堆疊條形圖
-        │   └── TaskFlowAnimation.tsx  # framer-motion SVG 任務流動動畫
+        │   ├── TaskFlowAnimation.tsx  # framer-motion SVG 任務流動動畫
+        │   └── DagGraph.tsx           # ReactFlow — layered layout + 四色狀態 + MiniMap (10月 W1)
         ├── lib/
-        │   ├── api.ts                 # createTask / getTask / listDlq / fetchPrometheus
+        │   ├── api.ts                 # createTask / getTask / listDlq / fetchPrometheus / getDagStatus / createDag
         │   ├── useQueueStream.ts      # EventSource hook (snapshot + flow events)
-        │   └── useCostSummary.ts      # /metrics/summary 5s 輪詢 + trend buffer
+        │   ├── useCostSummary.ts      # /metrics/summary 5s 輪詢 + trend buffer
+        │   └── useDagStatus.ts        # GET /workflows/dag/:id 1.5s 輪詢，終態自動停止 (10月 W1)
         └── pages/
             ├── Dashboard.tsx          # 即時儀表板
-            ├── Workflows.tsx          # DAG/Chain (placeholder)
+            ├── Workflows.tsx          # DAG 啟動頁：開啟既有 + 範例產生器 (10月 W1)
+            ├── DagView.tsx            # /workflows/dag/:id — 即時 DAG 圖 + 節點詳情側欄 (10月 W1)
             ├── Costs.tsx              # 成本面板 (placeholder)
             └── Architecture.tsx       # 系統架構 (placeholder)
 
@@ -199,7 +202,7 @@ libs/
 └── workflow/src/                      # DAG 工作流 (4 files)
     ├── dag.interface.ts               # DagNodeInput, DagMeta
     ├── topological-sort.ts            # Kahn's algorithm + 環/重複/自環檢查
-    ├── dag-coordinator.ts             # Redis 原子計數器 + 下游就緒判定
+    ├── dag-coordinator.ts             # Redis 原子計數器 + 下游就緒判定 + getAllNodes (10月 W1)
     └── index.ts
 
 docker/
@@ -225,7 +228,7 @@ docker/
 | `POST` | `/workflows/chain` | 建立線性任務鏈（steps[]，前一步 output 自動注入下一步 payload.previousResult） | 8月 W1 |
 | `GET` | `/workflows/:id` | 查詢工作流狀態（所有 step job 狀態 + 結果） | 8月 W1 |
 | `POST` | `/workflows/dag` | 建立 DAG 工作流（nodes[{id, dependsOn, payload}]，拓撲排序驗證 + 並行執行 + 結果注入 payload.dependencies） | 8月 W2 |
-| `GET` | `/workflows/dag/:id` | 查詢 DAG 狀態（layers, 各 node status/result/failedReason） | 8月 W2 |
+| `GET` | `/workflows/dag/:id` | 查詢 DAG 狀態（layers, 各 node status/result/failedReason；10月 W1 起每 node 增回 `dependsOn` 供前端畫依賴邊） | 8月 W2 / 擴充 10月 W1 |
 | `ALL` | `/admin/queues` | Bull Board 可視化看板（狀態、job 詳情、手動重試/刪除） | 8月 W3 |
 | `GET` | `/stream/queues` | SSE 串流：每 1s push `snapshot`（per-user queue counts + DLQ）+ `flow` events（job lifecycle, ring buffer 50 筆） | 9月 W2 / 擴充 9月 W3 |
 | `GET` | `/metrics` | Prometheus 指標（API） | 5月 W3 |
@@ -261,6 +264,7 @@ docker/
 | DAG 失敗阻斷 | 節點失敗標記 `status=failed`，下游 `deps-remaining` 永不歸零，自然停止傳播 | 8月 W2 |
 | 佇列可視化 | Bull Board mounted via HttpAdapterHost + periodic Redis scan 動態註冊新用戶佇列 | 8月 W3 |
 | 故障注入測試 | `tests/chaos/`：load-generator、kill-worker (SIGKILL)、redis-chaos (docker pause)、latency-injection、soak (12h 綜合) | 8月 W4 |
+| DAG 即時視覺化 | ReactFlow 依 backend 拓撲 `layers` 做 layered layout（無 force 模擬）、四色狀態節點、`useDagStatus` 1.5s 輪詢且終態自動停止、節點點擊詳情側欄 | 10月 W1 |
 
 ---
 
@@ -309,7 +313,7 @@ docker/
 | 技術文章 | 5/6 | ✅ #1 背壓、✅ #2 重試與冪等、✅ #3 成本控制、✅ #4 DAG 工作流、✅ #5 韌性報告、⏳ #6 學習系列完結文（12月 W4） |
 | 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo（含前端，10月 W4） |
 | ADR | 3/9+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002/003/004/005/007、✅ ADR-006 DAG 拓撲排序、✅ ADR-008 前端選型、⏳ ADR-009 學習化階段設計（11月 W1） |
-| 前端應用 | 0/1 | ⏳ `apps/web/` React 儀表板 + DAG 編輯器 + Chaos 控制台（9–10月） |
+| 前端應用 | 🚧 進行中 | ✅ 即時儀表板（9月）、✅ DAG 視覺化（10月 W1）、⏳ 互動 DAG 編輯器（10月 W2）、⏳ Chaos 控制台（10月 W3）、⏳ 架構互動地圖（10月 W4） |
 | 學習筆記 | 0/8 | ⏳ `learn/` 8 個技術點練習目錄（11–12月） |
 | 電子書 | 0/1 | ⏳《Building Scalable AI Agent Infrastructure》 |
 | 技術白皮書 | 0/1 | ⏳ "How we scaled to 10k TPS" |
@@ -337,6 +341,7 @@ docker/
 | react-router-dom | ^6.30 | 前端路由 |
 | recharts | ^2.15 | 即時佇列堆疊條形圖 |
 | framer-motion | ^11.11 | 任務流轉動畫 |
+| reactflow | ^11.11 | DAG 即時視覺化（layered layout + 四色狀態） |
 | Redis | 7.2 (Alpine) | Queue storage |
 | Prometheus | v2.53 | Metrics collection |
 | Grafana | 11.1 | Dashboard visualization |
@@ -344,4 +349,18 @@ docker/
 
 ---
 
-*最後更新：2026-05-01 | 版本：v0.13.0*
+## 十、ReactFlow 選型與 Layout 決策（10月 W1 週日總結）
+
+| 議題 | 決策 | 取捨理由 |
+|---|---|---|
+| 圖形函式庫 | `reactflow@11`（非 v12 `@xyflow/react`） | v11 與 React 18 穩定相容、社群文件最完整；v12 的新 API 對本階段唯讀視圖無增益，留待 W2 編輯器再評估 |
+| Layout 演算法 | 直接採用 backend 拓撲 `layers`：layer index → 欄、layer 內序 → 列、各 layer 垂直置中 | 無需 dagre / elk / force 模擬；佈局**確定性**，每 1.5s re-poll 不會抖動或重排，菱形/扇出扇入天然對齊；代價是同層節點過多時會超出視窗（靠 `fitView` + MiniMap + zoom 緩解） |
+| 依賴邊資料來源 | 擴增 `GET /workflows/dag/:id` 回傳 per-node `dependsOn`（資料早已存於 Redis `dag:{id}:nodes`） | 不另開端點；前端用 `dependsOn` 直接連邊，與既有輪詢共用一次請求 |
+| 更新機制 | 輪詢（1.5s）而非 SSE | DAG 為有限生命週期、終態即停（active+ready=0），輪詢實作最簡且足夠；SSE 留給無限串流場景（佇列/flow，已於 9月採用） |
+| ready 狀態著色 | 併入 pending（維持計畫「四色」） | 對外語意只需 pending/active/completed/failed；ready 為 coordinator 內部過渡態 |
+
+**已知後續項**：web bundle 已達 ~827 kB（reactflow + recharts + framer-motion），未來可用 route-level `import()` code-split（非 W1 範圍）。
+
+---
+
+*最後更新：2026-05-19 | 版本：v0.14.0*

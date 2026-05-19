@@ -48,6 +48,7 @@ export interface WorkflowStatus {
 
 export interface DagStatusNode {
   id: string;
+  dependsOn: string[];
   jobId?: string;
   status: string;
   result?: unknown;
@@ -256,9 +257,11 @@ export class WorkflowsService implements OnModuleDestroy {
     const jobIds = await this.dagCoordinator.getJobIds(dagId);
     const results = await this.dagCoordinator.getResults(dagId, meta.nodeIds);
     const failures = await this.dagCoordinator.getFailures(dagId);
+    const nodeInputs = await this.dagCoordinator.getAllNodes(dagId);
 
     const nodes: DagStatusNode[] = meta.nodeIds.map((id) => ({
       id,
+      dependsOn: nodeInputs[id]?.dependsOn ?? [],
       jobId: jobIds[id],
       status: statuses[id] ?? 'pending',
       result: results[id] ?? undefined,

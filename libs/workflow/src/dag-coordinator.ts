@@ -54,6 +54,15 @@ export class DagCoordinator {
     return raw ? (JSON.parse(raw) as DagNodeInput) : null;
   }
 
+  async getAllNodes(dagId: string): Promise<Record<string, DagNodeInput>> {
+    const raw = await this.redis.hgetall(this.nodesKey(dagId));
+    const out: Record<string, DagNodeInput> = {};
+    for (const [id, json] of Object.entries(raw)) {
+      out[id] = JSON.parse(json) as DagNodeInput;
+    }
+    return out;
+  }
+
   async getAllStatuses(dagId: string): Promise<Record<string, string>> {
     return this.redis.hgetall(this.statusKey(dagId));
   }

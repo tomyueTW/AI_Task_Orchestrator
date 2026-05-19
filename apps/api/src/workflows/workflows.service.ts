@@ -1,4 +1,10 @@
-import { Inject, Injectable, NotFoundException, OnModuleDestroy } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { FlowJob, FlowProducer, Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,7 +15,13 @@ import {
   getUserQueueName,
 } from '@app/queue';
 import { REDIS_CONNECTION, RedisConnectionConfig } from '@app/queue/queue.module';
-import { topologicalLayers, DagCoordinator, DagMeta, DagNodeInput } from '@app/workflow';
+import {
+  topologicalLayers,
+  DagValidationError,
+  DagCoordinator,
+  DagMeta,
+  DagNodeInput,
+} from '@app/workflow';
 import { CreateChainDto } from './dto/create-chain.dto';
 import { CreateDagDto } from './dto/create-dag.dto';
 
@@ -201,8 +213,18 @@ export class WorkflowsService implements OnModuleDestroy {
       model: n.model,
     }));
 
-    // Validate + compute parallel execution layers (throws on cycle/missing dep)
-    const layers = topologicalLayers(nodeInputs);
+    // Validate + compute parallel execution layers. topologicalLayers throws
+    // DagValidationError on cycle / missing dep / dup id / self-loop — surface
+    // it as a 400 so the editor's "backend re-block" path shows the reason.
+    let layers: string[][];
+    try {
+      layers = topologicalLayers(nodeInputs);
+    } catch (err) {
+      if (err instanceof DagValidationError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
 
     const meta: DagMeta = {
       dagId,

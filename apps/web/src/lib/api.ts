@@ -90,6 +90,17 @@ export async function createDag(input: {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error(`createDag failed: ${res.status}`);
+  if (!res.ok) {
+    // NestJS error body: { statusCode, message: string | string[], error }
+    let detail = `HTTP ${res.status}`;
+    try {
+      const body = await res.json();
+      const m = body?.message;
+      detail = Array.isArray(m) ? m.join('; ') : (m ?? detail);
+    } catch {
+      /* non-JSON body — keep status code */
+    }
+    throw new Error(detail);
+  }
   return res.json();
 }

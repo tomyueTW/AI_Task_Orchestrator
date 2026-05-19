@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createDag, type DagNodeInput } from '../lib/api';
 
 // Diamond: A → B,C → D (fan-out then fan-in).
@@ -49,10 +49,20 @@ export function Workflows() {
   return (
     <section className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">工作流</h1>
-        <p className="text-sm text-slate-400">
-          DAG（拓撲排序）即時視覺化 — ReactFlow，依 layers 佈局，四色狀態，1.5s 輪詢
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">工作流</h1>
+            <p className="text-sm text-slate-400">
+              DAG（拓撲排序）即時視覺化 — ReactFlow，依 layers 佈局，四色狀態，1.5s 輪詢
+            </p>
+          </div>
+          <Link
+            to="/workflows/editor"
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500"
+          >
+            + 互動 DAG 編輯器
+          </Link>
+        </div>
       </header>
 
       <div className="max-w-xl space-y-3 rounded-lg border border-slate-800 bg-slate-900/40 p-5">

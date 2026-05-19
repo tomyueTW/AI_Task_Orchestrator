@@ -4,6 +4,7 @@ const NAV = [
   { to: '/', label: '即時儀表板', exact: true },
   { to: '/workflows', label: '工作流' },
   { to: '/costs', label: '成本面板' },
+  { to: '/chaos', label: 'Chaos 控制台' },
   { to: '/architecture', label: '系統架構' },
 ];
 

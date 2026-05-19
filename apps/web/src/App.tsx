@@ -5,6 +5,7 @@ import { Workflows } from './pages/Workflows';
 import { DagView } from './pages/DagView';
 import { DagEditor } from './pages/DagEditor';
 import { Costs } from './pages/Costs';
+import { Chaos } from './pages/Chaos';
 import { Architecture } from './pages/Architecture';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/workflows/editor" element={<DagEditor />} />
         <Route path="/workflows/dag/:id" element={<DagView />} />
         <Route path="/costs" element={<Costs />} />
+        <Route path="/chaos" element={<Chaos />} />
         <Route path="/architecture" element={<Architecture />} />
       </Route>
     </Routes>

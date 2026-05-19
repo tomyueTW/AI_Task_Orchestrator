@@ -104,3 +104,68 @@ export async function createDag(input: {
   }
   return res.json();
 }
+
+// ── Chaos control panel (10月 W3) ─────────────────────────────────────────
+
+export type ChaosAction = 'killWorker' | 'pauseRedis' | 'injectLatency';
+
+export interface ChaosActionMeta {
+  description: string;
+  expects: string[];
+}
+
+export interface ChaosDirective {
+  action: ChaosAction;
+  issuedAt: number;
+  until: number;
+  latencyMs?: number;
+}
+
+export interface ChaosStatus {
+  active: ChaosDirective | null;
+  catalog: Record<ChaosAction, ChaosActionMeta>;
+}
+
+export interface ChaosTriggerResult {
+  action: ChaosAction;
+  issuedAt: number;
+  until: number;
+  durationMs: number;
+  latencyMs?: number;
+  description: string;
+  expects: string[];
+}
+
+async function adminErr(res: Response): Promise<string> {
+  let detail = `HTTP ${res.status}`;
+  try {
+    const body = await res.json();
+    const m = body?.message;
+    detail = Array.isArray(m) ? m.join('; ') : (m ?? detail);
+  } catch {
+    /* keep status */
+  }
+  return detail;
+}
+
+export async function getChaosStatus(token: string): Promise<ChaosStatus> {
+  const res = await fetch(`${BASE}/admin/chaos`, {
+    headers: { 'x-admin-token': token },
+  });
+  if (!res.ok) throw new Error(await adminErr(res));
+  return res.json();
+}
+
+export async function triggerChaos(
+  action: ChaosAction,
+  token: string,
+  body: { durationMs?: number; latencyMs?: number },
+): Promise<ChaosTriggerResult> {
+  const res = await fetch(`${BASE}/admin/chaos/${action}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-admin-token': token },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await adminErr(res));
+  return res.json();
+}

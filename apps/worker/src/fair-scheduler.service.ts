@@ -10,6 +10,8 @@ import {
   TaskPriority,
   PRIORITY_MAP,
   getUserQueueName,
+  CHAOS_KEY,
+  ChaosDirective,
 } from '@app/queue';
 import { REDIS_CONNECTION, RedisConnectionConfig } from '@app/queue/queue.module';
 import { MetricsService } from '@app/observability';
@@ -28,6 +30,15 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly failureRate: number;
   private readonly timeoutMs: number;
   private scanInterval: ReturnType<typeof setInterval> | undefined;
+
+  // ── Chaos control (10月 W3) — driven by Redis directive, see @app/queue ──
+  private chaosInterval: ReturnType<typeof setInterval> | undefined;
+  private lastChaosIssuedAt = 0;
+  private injectedLatencyMs = 0;
+  private latencyUntil = 0;
+  private workersSuppressedUntil = 0; // killWorker window
+  private pausedUntil = 0;
+  private workersPaused = false;
 
   constructor(
     @Inject(REDIS_CONNECTION) private readonly redisConfig: RedisConnectionConfig,
@@ -58,10 +69,20 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
 
     // Periodically scan for new user queues
     this.scanInterval = setInterval(() => this.discoverQueues(), 5000);
+
+    // Poll the chaos control channel (10月 W3)
+    this.chaosInterval = setInterval(
+      () =>
+        this.pollChaos().catch((err) =>
+          this.logger.error(`Chaos poll failed: ${err.message}`),
+        ),
+      1000,
+    );
   }
 
   async onModuleDestroy() {
     if (this.scanInterval) clearInterval(this.scanInterval);
+    if (this.chaosInterval) clearInterval(this.chaosInterval);
 
     this.logger.log('FairScheduler shutting down — closing all workers...');
     const closePromises = Array.from(this.workers.values()).map((w) => w.close());
@@ -69,6 +90,68 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
     await Promise.all([...closePromises, ...enqueuePromises]);
     await this.redis.quit();
     this.logger.log('FairScheduler closed gracefully');
+  }
+
+  /**
+   * Chaos control loop (10月 W3). Reads the time-boxed directive written by the
+   * API's ChaosService and self-applies it. Each effect auto-expires at `until`.
+   */
+  private async pollChaos(): Promise<void> {
+    const now = Date.now();
+
+    // Resume from a pauseRedis window.
+    if (this.workersPaused && now >= this.pausedUntil) {
+      for (const w of this.workers.values()) await w.resume();
+      this.workersPaused = false;
+      this.logger.warn('[chaos] pauseRedis window ended — workers resumed');
+    }
+
+    const raw = await this.redis.get(CHAOS_KEY);
+    if (!raw) return;
+
+    let d: ChaosDirective;
+    try {
+      d = JSON.parse(raw) as ChaosDirective;
+    } catch {
+      return;
+    }
+    if (d.until <= now) return;
+
+    // injectLatency must keep refreshing while active; the others act once.
+    if (d.issuedAt === this.lastChaosIssuedAt && d.action !== 'injectLatency') {
+      return;
+    }
+
+    if (d.action === 'injectLatency') {
+      this.injectedLatencyMs = d.latencyMs ?? 0;
+      this.latencyUntil = d.until;
+      if (d.issuedAt !== this.lastChaosIssuedAt) {
+        this.logger.warn(
+          `[chaos] injectLatency armed: ${this.injectedLatencyMs}ms until ${new Date(d.until).toISOString()}`,
+        );
+      }
+      this.lastChaosIssuedAt = d.issuedAt;
+      return;
+    }
+
+    this.lastChaosIssuedAt = d.issuedAt;
+
+    if (d.action === 'killWorker') {
+      this.logger.warn(
+        `[chaos] killWorker — closing ${this.workers.size} worker(s); rebuild after window`,
+      );
+      this.workersSuppressedUntil = d.until;
+      const closing = Array.from(this.workers.values()).map((w) => w.close());
+      this.workers.clear();
+      await Promise.all(closing);
+    } else if (d.action === 'pauseRedis') {
+      this.logger.warn(
+        `[chaos] pauseRedis — pausing ${this.workers.size} worker(s) until window ends`,
+      );
+      this.pausedUntil = d.until;
+      this.workersPaused = true;
+      for (const w of this.workers.values()) await w.pause();
+    }
   }
 
   private getEnqueueQueue(userId: string): Queue {
@@ -80,6 +163,9 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
   }
 
   private async discoverQueues() {
+    // killWorker chaos window: do not rebuild workers until it expires.
+    if (Date.now() < this.workersSuppressedUntil) return;
+
     // Scan for BullMQ queue meta keys: bull:{queueName}:meta
     const keys = await this.redis.keys(`bull:${TASK_QUEUE_PREFIX}*:meta`);
 
@@ -209,11 +295,19 @@ export class FairScheduler implements OnModuleInit, OnModuleDestroy {
       );
     });
 
-    // Call real LLM API
-    const llmResponse = await Promise.race([
-      this.llm.call(modelId, prompt),
-      timeoutPromise,
-    ]);
+    // Call real LLM API. Chaos injectLatency adds artificial delay *inside*
+    // the raced promise so it competes with timeoutPromise (latency > timeout
+    // → hard timeout fires → DLQ after retries).
+    const work = (async () => {
+      if (Date.now() < this.latencyUntil && this.injectedLatencyMs > 0) {
+        this.logger.warn(
+          `[chaos] Injecting ${this.injectedLatencyMs}ms latency into job ${job.id}`,
+        );
+        await new Promise((r) => setTimeout(r, this.injectedLatencyMs));
+      }
+      return this.llm.call(modelId, prompt);
+    })();
+    const llmResponse = await Promise.race([work, timeoutPromise]);
 
     const costRecord = this.costTracker.record(
       job.id!,

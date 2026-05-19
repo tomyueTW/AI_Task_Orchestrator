@@ -1,6 +1,6 @@
 # AI Task Orchestrator — 專案進度追蹤
 
-> **版本：** v0.15.0
+> **版本：** v0.16.0
 > **最後更新：** 2026-05-19
 > **計畫週期：** 2026年4月 ─ 2027年1月（延長 4 個月，新增視覺化與學習化階段）
 
@@ -16,7 +16,7 @@
 | | 7月 | AI Routing & Cost (Intelligence) | ✅ 完成 |
 | **三：複雜場景與韌性驗證** | 8月 | 工作流與 Chaos (Resilience) | ✅ 完成 |
 | **四：視覺化 (Visualization)** | 9月 | 即時狀態儀表板 (Live Dashboard) | ✅ 完成 |
-| | 10月 | 互動式架構與 Chaos 控制台 | 🚧 進行中（W1–W2 ✅） |
+| | 10月 | 互動式架構與 Chaos 控制台 | 🚧 進行中（W1–W3 ✅） |
 | **五：學習化 (Learnability)** | 11月 | 穩定性三承諾 自練 | ⏳ 待開始 |
 | | 12月 | 進階調度與工作流 自練 | ⏳ 待開始 |
 | **六：品牌化與終極結案** | 2027年1月 | Portfolio / 電子書 / 正式發布 | ⏳ 待開始 |
@@ -85,7 +85,7 @@
 |---|---|---|---|
 | W1 | DAG 可視化 (ReactFlow) | ✅ | `reactflow@11.11.4`；新增 `/workflows/dag/:id` 前端頁（`DagView` + `DagGraph`）；以 backend `layers` 做 layered layout（無 force 模擬，re-poll 不抖動）；四色狀態（pending/active/completed/failed，ready 併入 pending）；`useDagStatus` 1.5s 輪詢、終態自動停止；節點點擊側欄詳情（status/dependsOn/jobId/result/failedReason）；MiniMap + Controls；`GET /workflows/dag/:id` 回傳擴增 per-node `dependsOn`（`DagCoordinator.getAllNodes`）；Workflows 頁加入「開啟既有 DAG」+ 範例 DAG 產生器（菱形 / 扇出扇入 12 / 渲染壓測 52） |
 | W2 | 互動 DAG 編輯器 | ✅ | `/workflows/editor`（`DagEditor`）：ReactFlow 可編輯畫布（`useNodesState`/`useEdgesState`）、新增節點、拖曳連線（上游→下游即 `dependsOn`）、Delete 鍵刪除節點並自動清除懸空邊；節點側欄編輯 `payload`(JSON) / `taskType`；`lib/dagValidation.ts` 共用循環偵測 — `onConnect` 即時擋環 + 送出前 `validateDag`（前端先擋）；後端 `topologicalLayers` 失敗改映射為 **400 BadRequest**（後端再擋），`createDag` 解析 Nest 錯誤訊息回顯；匯出 JSON（檢視/複製）；送出後導向 W1 執行視圖 `/workflows/dag/:id` |
-| W3 | Chaos 控制面板 | ⏳ | `POST /admin/chaos/:action` + ADMIN_TOKEN、前端按鈕觸發、即時觀察指標變化 |
+| W3 | Chaos 控制面板 | ✅ | `libs/queue` 新增 chaos 指令契約（`CHAOS_KEY` / `ChaosDirective` / `CHAOS_CATALOG`）；API `AdminModule` 新增 `ChaosController`（`POST /admin/chaos/:action`、`GET /admin/chaos`）+ `ChaosService`（寫 time-boxed directive 至 Redis，PX TTL）+ `AdminTokenGuard`（fail-closed、`x-admin-token`、`timingSafeEqual`）；Worker `FairScheduler` 1s 輪詢 chaos 指令自我套用：injectLatency（race 內注入延遲 → 硬超時 → DLQ）、killWorker（close+suppress 窗口後重建）、pauseRedis（pause/resume）；前端 `Chaos` 頁（token 閘 + 三動作卡 + 即時 failed/dlq/timeout delta + 倒數）+ 導覽列；`.env.example` 加 `ADMIN_TOKEN`；週六重跑 5 chaos 腳本；§十二 權限設計 |
 | W4 | 架構互動地圖 + 影片 #2 | ⏳ | SVG 組件圖 + 點擊彈 ADR 卡；錄製並發布系統全貌 Demo 影片 |
 
 ### 11月：學習化階段 — 穩定性三承諾
@@ -142,7 +142,11 @@ apps/
 │   │       └── create-dag.dto.ts      # userId, priority, nodes[{id, dependsOn, payload}]
 │   ├── admin/
 │   │   ├── admin.module.ts
-│   │   └── admin.service.ts           # Bull Board + 動態掃描用戶佇列 (/admin/queues)
+│   │   ├── admin.service.ts           # Bull Board + 動態掃描用戶佇列 (/admin/queues)
+│   │   ├── admin-token.guard.ts       # fail-closed x-admin-token 守衛 (10月 W3)
+│   │   ├── chaos.controller.ts        # POST /admin/chaos/:action, GET /admin/chaos (10月 W3)
+│   │   ├── chaos.service.ts           # 寫 time-boxed chaos directive 至 Redis (10月 W3)
+│   │   └── dto/trigger-chaos.dto.ts   # durationMs / latencyMs 邊界 (10月 W3)
 │   ├── stream/
 │   │   ├── stream.module.ts
 │   │   ├── stream.controller.ts       # GET /stream/queues (SSE)
@@ -154,7 +158,7 @@ apps/
 ├── worker/src/                        # BullMQ Worker (3 files)
 │   ├── main.ts                        # + metrics :9091
 │   ├── worker.module.ts
-│   └── fair-scheduler.service.ts      # 公平調度 + 真實 LLM 呼叫
+│   └── fair-scheduler.service.ts      # 公平調度 + 真實 LLM 呼叫 + chaos 1s 輪詢自套用 (10月 W3)
 └── web/                               # React 前端 (9月 W1+)
     ├── index.html
     ├── vite.config.mts                # Vite 5 + Tailwind v4 plugin (ESM)
@@ -169,7 +173,7 @@ apps/
         │   ├── TaskFlowAnimation.tsx  # framer-motion SVG 任務流動動畫
         │   └── DagGraph.tsx           # ReactFlow — layered layout + 四色狀態 + MiniMap (10月 W1)
         ├── lib/
-        │   ├── api.ts                 # createTask / getTask / listDlq / fetchPrometheus / getDagStatus / createDag（回顯 Nest 錯誤訊息）
+        │   ├── api.ts                 # …/ getDagStatus / createDag / getChaosStatus / triggerChaos（回顯 Nest 錯誤訊息）
         │   ├── useQueueStream.ts      # EventSource hook (snapshot + flow events)
         │   ├── useCostSummary.ts      # /metrics/summary 5s 輪詢 + trend buffer
         │   ├── useDagStatus.ts        # GET /workflows/dag/:id 1.5s 輪詢，終態自動停止 (10月 W1)
@@ -180,12 +184,14 @@ apps/
             ├── DagView.tsx            # /workflows/dag/:id — 即時 DAG 圖 + 節點詳情側欄 (10月 W1)
             ├── DagEditor.tsx          # /workflows/editor — 拖拽建構 + 擋環 + 匯出 + 送出 (10月 W2)
             ├── Costs.tsx              # 成本面板 (placeholder)
+            ├── Chaos.tsx              # /chaos — token 閘 + 三動作卡 + 即時指標 delta (10月 W3)
             └── Architecture.tsx       # 系統架構 (placeholder)
 
 libs/
-├── queue/src/                         # 佇列抽象 (3 files)
+├── queue/src/                         # 佇列抽象 (4 files)
 │   ├── task.interface.ts              # Task, TaskStatus, TaskPriority, TokenUsage
 │   ├── queue.module.ts                # Redis 連線 + DLQ
+│   ├── chaos.interface.ts             # CHAOS_KEY / ChaosDirective / CHAOS_CATALOG (10月 W3)
 │   └── index.ts
 ├── idempotency/src/                   # 冪等性 (3 files)
 │   ├── idempotency.service.ts
@@ -232,6 +238,8 @@ docker/
 | `POST` | `/workflows/dag` | 建立 DAG 工作流（nodes[{id, dependsOn, payload}]，拓撲排序驗證 + 並行執行 + 結果注入 payload.dependencies；10月 W2 起驗證失敗回 `400 BadRequest` 並帶原因，非 500） | 8月 W2 / 擴充 10月 W2 |
 | `GET` | `/workflows/dag/:id` | 查詢 DAG 狀態（layers, 各 node status/result/failedReason；10月 W1 起每 node 增回 `dependsOn` 供前端畫依賴邊） | 8月 W2 / 擴充 10月 W1 |
 | `ALL` | `/admin/queues` | Bull Board 可視化看板（狀態、job 詳情、手動重試/刪除） | 8月 W3 |
+| `GET` | `/admin/chaos` | 查詢目前 chaos directive + catalog（需 `x-admin-token`） | 10月 W3 |
+| `POST` | `/admin/chaos/:action` | 觸發 chaos（`killWorker`/`pauseRedis`/`injectLatency`）；body `{durationMs?,latencyMs?}`；需 `x-admin-token`（未設 ADMIN_TOKEN→403） | 10月 W3 |
 | `GET` | `/stream/queues` | SSE 串流：每 1s push `snapshot`（per-user queue counts + DLQ）+ `flow` events（job lifecycle, ring buffer 50 筆） | 9月 W2 / 擴充 9月 W3 |
 | `GET` | `/metrics` | Prometheus 指標（API） | 5月 W3 |
 | `GET` | `/metrics/summary` | Worker :9091 Prometheus 解析後的 JSON 摘要（cost / tokens / routing / rate-limit / failures） | 9月 W4 |
@@ -268,6 +276,7 @@ docker/
 | 故障注入測試 | `tests/chaos/`：load-generator、kill-worker (SIGKILL)、redis-chaos (docker pause)、latency-injection、soak (12h 綜合) | 8月 W4 |
 | DAG 即時視覺化 | ReactFlow 依 backend 拓撲 `layers` 做 layered layout（無 force 模擬）、四色狀態節點、`useDagStatus` 1.5s 輪詢且終態自動停止、節點點擊詳情側欄 | 10月 W1 |
 | 互動 DAG 編輯器 | ReactFlow 可編輯畫布（增/連/刪）、`onConnect` 即時擋環 + 送出前 `validateDag`（前端先擋）、後端 `topologicalLayers`→400（後端再擋）、匯出 JSON、一鍵 POST 後導向執行視圖 | 10月 W2 |
+| Chaos 控制台 | API 寫 time-boxed Redis directive、Worker 1s 輪詢自套用（killWorker/pauseRedis/injectLatency）、`AdminTokenGuard` fail-closed、前端面板即時觀察 failed/dlq/timeout delta + 倒數 | 10月 W3 |
 
 ---
 
@@ -291,6 +300,7 @@ docker/
 | `OLLAMA_RPM_LIMIT` | `999` | Ollama RPM 限流 | 7月 W3 |
 | `ADMIN_QUEUE_SCAN_INTERVAL_MS` | `5000` | Bull Board 掃描新用戶佇列的頻率 | 8月 W3 |
 | `WORKER_METRICS_URL` | `http://localhost:9091/` | API 拉取 Worker Prometheus metrics 來源 | 9月 W4 |
+| `ADMIN_TOKEN` | —（未設則 /admin/chaos 全 403） | Chaos 控制台認證（fail-closed） | 10月 W3 |
 
 ---
 
@@ -316,7 +326,7 @@ docker/
 | 技術文章 | 5/6 | ✅ #1 背壓、✅ #2 重試與冪等、✅ #3 成本控制、✅ #4 DAG 工作流、✅ #5 韌性報告、⏳ #6 學習系列完結文（12月 W4） |
 | 影片 | 0/2 | ⏳ #1 公平調度 Demo、⏳ #2 系統全貌 Demo（含前端，10月 W4） |
 | ADR | 3/9+ | ✅ ADR-001 NestJS+BullMQ、⏳ ADR-002/003/004/005/007、✅ ADR-006 DAG 拓撲排序、✅ ADR-008 前端選型、⏳ ADR-009 學習化階段設計（11月 W1） |
-| 前端應用 | 🚧 進行中 | ✅ 即時儀表板（9月）、✅ DAG 視覺化（10月 W1）、✅ 互動 DAG 編輯器（10月 W2）、⏳ Chaos 控制台（10月 W3）、⏳ 架構互動地圖（10月 W4） |
+| 前端應用 | 🚧 進行中 | ✅ 即時儀表板（9月）、✅ DAG 視覺化（10月 W1）、✅ 互動 DAG 編輯器（10月 W2）、✅ Chaos 控制台（10月 W3）、⏳ 架構互動地圖（10月 W4） |
 | 學習筆記 | 0/8 | ⏳ `learn/` 8 個技術點練習目錄（11–12月） |
 | 電子書 | 0/1 | ⏳《Building Scalable AI Agent Infrastructure》 |
 | 技術白皮書 | 0/1 | ⏳ "How we scaled to 10k TPS" |
@@ -379,4 +389,18 @@ docker/
 
 ---
 
-*最後更新：2026-05-19 | 版本：v0.15.0*
+## 十二、Admin Chaos API 權限設計（10月 W3 週日總結）
+
+| 議題 | 決策 | 理由 |
+|---|---|---|
+| 跨 process 機制 | API 寫有時限 Redis directive（`CHAOS_KEY`，PX TTL），Worker 1s 輪詢自套用 | API 無 Worker process handle；不需 docker socket → 最小權限、可攜、Redis 已是共用依賴 |
+| 認證方式 | `AdminTokenGuard` + `x-admin-token` header + `timingSafeEqual` 等長比較；token 不寫入 log | 改變系統穩定性的端點必須 admin-gated；常數時間比較避免 timing 洩漏 |
+| 預設安全 | **Fail-closed**：`ADMIN_TOKEN` 未設 → 全 `/admin/chaos` 路由 403 | 設定缺漏不得靜默暴露破壞性動作（prod 忘了設不會變公開） |
+| 爆炸半徑 | 每動作 time-boxed（`durationMs` ≤120s + Redis PX TTL），到期自動恢復 | 不留永久損害；UI 顯示倒數，可預期 |
+| killWorker 語意 | graceful `close()` + suppress 窗口後由既有 5s scan 重建（模擬崩潰） | 面板安全可逆、可一鍵演示；真實 SIGKILL 仍保留於 `tests/chaos/kill-worker.ts` |
+| 與 8月 W4 區隔 | 腳本＝真實 OS/Docker chaos（SIGKILL / `docker pause`）；面板＝可逆 UI 模擬 | 兩者互補：腳本做真實韌性演習，面板做可演示的故障注入教學 |
+| 指標回饋 | 沿用既有 `useCostSummary`（`/metrics/summary` 已含 failed/dlq/timeout），不另開端點 | 重用既有資料管線，前端只需算觸發後 delta |
+
+---
+
+*最後更新：2026-05-19 | 版本：v0.16.0*

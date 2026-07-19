@@ -1,4 +1,4 @@
-# AI Task Orchestrator 2026 — Project Plan (v0.8.0)
+# AI Task Orchestrator 2026 — Project Plan (v0.18.0)
 
 > **計畫週期：** 2026年4月 ─ 2027年1月（10個月）
 > **核心技術棧：** NestJS · Redis (BullMQ) · TypeScript · React
@@ -564,4 +564,4 @@ perf(cache): implement semantic cache for AI responses
 
 ---
 
-*最後更新：2026-05-19 | 版本：v0.16.0*
+*最後更新：2026-07-19 | 版本：v0.18.0*
